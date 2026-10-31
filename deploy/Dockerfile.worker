@@ -1,0 +1,12 @@
+# Imagen del worker (investigación, enriquecimiento y peticiones del panel). Contexto de construcción: la raíz del repositorio.
+# Se ejecuta con tsx (TypeScript directo): es lo más simple mientras el worker sea un único proceso; si el arranque pesara, se empaquetará.
+FROM node:22-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY package.json package-lock.json tsconfig.json ./
+COPY apps ./apps
+COPY packages ./packages
+# Solo las dependencias del worker (y de lo que importa), más tsx, que vive en la raíz del monorepo.
+RUN npm ci --ignore-scripts --include=dev --include-workspace-root -w @turnosala/worker
+USER node
+CMD ["npx", "tsx", "apps/worker/src/main.ts"]

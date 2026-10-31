@@ -74,6 +74,14 @@ describe('adaptador OSM / Overpass (REQ-RES-02)', () => {
     expect(q).toContain('out tags center');
   });
 
+  it('los filtros de la petición (los del segmento) mandan sobre los de la configuración', async () => {
+    const f = vi.fn(async () => json(FIXTURE));
+    await adapter(f).a.fetch({ ...req, osmFilters: [['amenity', 'physiotherapist']] });
+    const q = decodeURIComponent(String((f.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+    expect(q).toContain('["amenity"="physiotherapist"]');
+    expect(q).not.toContain('dentist');
+  });
+
   it('convierte elementos en candidatos con fuente, teléfono, web, dirección y atribución ODbL', async () => {
     const r = await adapter(async () => json(FIXTURE)).a.fetch(req);
     expect(r.costEur).toBe(0);

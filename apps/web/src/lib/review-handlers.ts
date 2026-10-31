@@ -1,38 +1,12 @@
-import { approveSegment, bulkApprove, correctField, exportApprovedCsv, retireSegment, reviewProspect, type Reviewer } from '@turnosala/db/web';
-import type pg from 'pg';
+import { approveSegment, bulkApprove, correctField, exportApprovedCsv, retireSegment, reviewProspect } from '@turnosala/db/web';
 import { z } from 'zod';
+import { fail, guardPost, json, UUID, type RouteDeps } from './http.js';
 import { roleOf, type Role } from './users.js';
 
 // Rutas de la revisión humana y de los segmentos. Cada una comprueba en SERVIDOR: origen exacto (CSRF), tipo JSON, sesión y rol; la
 // interfaz solo es una comodidad. Aprobar no contacta con nadie (REQ-REV-02 CA1).
 
-export interface ReviewDeps {
-  pool: pg.Pool;
-  /** origen público de la aplicación (p. ej. https://go.turnosala.com) */
-  siteOrigin: string;
-  /** id del usuario de la sesión, o null */
-  userId(req: Request): Promise<string | null>;
-}
-
-const json = (status: number, body: unknown): Response => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** POST con las defensas comunes. Devuelve el revisor autenticado o la respuesta de error. */
-async function guardPost(req: Request, deps: ReviewDeps): Promise<{ who: Reviewer; body: unknown } | Response> {
-  if (req.headers.get('origin') !== deps.siteOrigin) return json(403, { error: 'origen no permitido' });
-  if (!req.headers.get('content-type')?.includes('application/json')) return json(415, { error: 'se esperaba JSON' });
-  const userId = await deps.userId(req);
-  if (!userId) return json(401, { error: 'sin sesión' });
-  const role = await roleOf(deps.pool, userId);
-  if (role !== 'admin' && role !== 'marketing') return json(403, { error: 'permiso insuficiente' });
-  return { who: { userId, role }, body: await req.json().catch(() => null) };
-}
-
-const FAIL_STATUS: Record<string, number> = {
-  forbidden: 403, not_found: 404, not_reviewable: 409, not_draft: 409, not_approved: 409, domain_taken: 409,
-  reason_required: 422, invalid_value: 422, invalid_field: 422, invalid_patch: 422,
-};
-const fail = (reason: string): Response => json(FAIL_STATUS[reason] ?? 400, { error: reason });
+export type ReviewDeps = RouteDeps;
 
 const reviewBody = z.discriminatedUnion('action', [
   z.object({ action: z.literal('approve') }),

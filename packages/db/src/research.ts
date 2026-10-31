@@ -57,8 +57,16 @@ function validate(i: CreateJobInput): number {
   return max;
 }
 
+/** Solo se investiga con segmentos aprobados por marketing (los del modelo nacen en borrador). */
+async function assertSegmentApproved(pool: Db, segmentId: string): Promise<void> {
+  const seg = (await pool.query('select status from segments where id = $1', [segmentId])).rows[0] as { status: string } | undefined;
+  if (!seg) throw new Error('El segmento no existe');
+  if (seg.status !== 'approved') throw new Error('El segmento no está aprobado: solo se investiga con segmentos aprobados');
+}
+
 export async function createResearchJob(pool: Db, input: CreateJobInput): Promise<{ jobId: string; tasks: number }> {
   const max = validate(input);
+  await assertSegmentApproved(pool, input.segmentId);
   const sources = [...new Set(input.sourceIds)];
   const codes = [...new Set(input.ineCodes)];
   await assertSourcesActive(pool, sources, input.createdBy);
@@ -187,12 +195,15 @@ export async function finishTask(pool: Db, taskId: string, info: FinishInfo, now
   });
 }
 
-/** Un fallo devuelve la tarea a la cola hasta `MAX_ATTEMPTS` intentos; después queda fallida y el trabajo sigue con el resto (RES-03). */
-export async function failTask(pool: Db, taskId: string, error: string, now: Date = new Date(), extra: { costEur?: number } = {}): Promise<{ applied: boolean }> {
+/**
+ * Un fallo devuelve la tarea a la cola hasta `MAX_ATTEMPTS` intentos; después queda fallida y el trabajo sigue con el resto (RES-03).
+ * Con `final` (la fuente ya agotó sus propios reintentos con espera) queda fallida al primer intento: no se vuelve a golpear una fuente caída.
+ */
+export async function failTask(pool: Db, taskId: string, error: string, now: Date = new Date(), extra: { costEur?: number; final?: boolean } = {}): Promise<{ applied: boolean }> {
   return tx(pool, async (c) => {
     const t = (await c.query(`select job_id, attempts from research_tasks where id = $1 and status = 'running' for update`, [taskId])).rows[0] as { job_id: string; attempts: number } | undefined;
     if (!t) return { applied: false };
-    await c.query(`update research_tasks set status = $2, error = $3, lease_until = null, updated_at = $4 where id = $1`, [taskId, t.attempts >= MAX_ATTEMPTS ? 'failed' : 'pending', error.slice(0, 500), now]);
+    await c.query(`update research_tasks set status = $2, error = $3, lease_until = null, updated_at = $4 where id = $1`, [taskId, extra.final || t.attempts >= MAX_ATTEMPTS ? 'failed' : 'pending', error.slice(0, 500), now]);
     if (extra.costEur) await addToJob(c, t.job_id, 0, extra.costEur);
     await applyBrakes(c, t.job_id);
     await rollup(c, t.job_id);
@@ -240,4 +251,61 @@ export async function getProgress(pool: Db, jobId: string): Promise<Progress> {
     jobId, status: j.status, tasks, candidates: j.stats.candidates ?? 0, costEur: j.stats.cost_eur ?? 0, maxCandidates: j.max_candidates, budgetEur: Number(j.budget_eur),
     stopReason: j.stats.stop_reason ?? null, errorsBySource: errs.map((e) => ({ sourceId: e.source_id, failed: Number(e.failed), lastError: e.last_error })),
   };
+}
+
+export interface JobSummary {
+  id: string;
+  segmentName: string;
+  status: string;
+  createdBy: string;
+  createdAt: Date;
+  maxCandidates: number;
+  budgetEur: number;
+  candidates: number;
+  costEur: number;
+  stopReason: string | null;
+  tasks: Progress['tasks'];
+  lastError: string | null;
+}
+
+/** Trabajos recientes con su avance, para el panel (CA4). */
+export async function listResearchJobs(pool: Db, limit: number): Promise<JobSummary[]> {
+  const r = await pool.query(
+    `select j.id, s.name as segment_name, j.status, j.created_by, j.created_at, j.max_candidates, j.budget_eur, j.stats,
+            c.pending, c.running, c.done, c.failed, c.skipped, c.last_error
+       from research_jobs j join segments s on s.id = j.segment_id
+       left join lateral (
+         select count(*) filter (where status = 'pending')::int as pending, count(*) filter (where status = 'running')::int as running,
+                count(*) filter (where status = 'done')::int as done, count(*) filter (where status = 'failed')::int as failed,
+                count(*) filter (where status = 'skipped')::int as skipped,
+                (array_agg(error order by updated_at desc) filter (where status = 'failed' and error is not null))[1] as last_error
+           from research_tasks where job_id = j.id) c on true
+      order by j.created_at desc, j.id desc limit $1`, [limit]);
+  return (r.rows as Array<Record<string, unknown>>).map((x) => {
+    const st = (x.stats ?? {}) as Partial<JobStats>;
+    return {
+      id: x.id as string, segmentName: x.segment_name as string, status: x.status as string, createdBy: x.created_by as string, createdAt: x.created_at as Date,
+      maxCandidates: x.max_candidates as number, budgetEur: Number(x.budget_eur), candidates: st.candidates ?? 0, costEur: st.cost_eur ?? 0, stopReason: st.stop_reason ?? null,
+      tasks: { pending: x.pending as number, running: x.running as number, done: x.done as number, failed: x.failed as number, skipped: x.skipped as number }, lastError: x.last_error as string | null,
+    };
+  });
+}
+
+export interface Heartbeat {
+  workerId: string;
+  llmEnabled: boolean;
+  at: Date;
+}
+
+/** El worker marca que sigue vivo; el panel lo lee para avisar si no hay worker en marcha. */
+export async function touchWorkerHeartbeat(pool: Db, h: { workerId: string; llmEnabled: boolean }, at: Date = new Date()): Promise<void> {
+  await pool.query(
+    `insert into settings (key, value, updated_by) values ('worker_heartbeat', $1, 'worker')
+       on conflict (key) do update set value = excluded.value, updated_by = 'worker', updated_at = now()`,
+    [JSON.stringify({ workerId: h.workerId, llmEnabled: h.llmEnabled, at: at.toISOString() })]);
+}
+
+export async function getWorkerHeartbeat(pool: Db): Promise<Heartbeat | null> {
+  const v = (await pool.query(`select value from settings where key = 'worker_heartbeat'`)).rows[0] as { value: { workerId: string; llmEnabled: boolean; at: string } } | undefined;
+  return v ? { workerId: v.value.workerId, llmEnabled: v.value.llmEnabled, at: new Date(v.value.at) } : null;
 }

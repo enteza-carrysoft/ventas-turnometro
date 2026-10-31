@@ -5,3 +5,8 @@ export {
   type Card, type QueueItem, type Reviewer, type ReviewInput, type ReviewResult, type CorrectInput, type CorrectResult, type BulkResult,
 } from './review.js';
 export { approveSegment, retireSegment, editSegment, type Actor as SegmentActor, type SegmentPatch } from './segments.js';
+export {
+  createResearchJob, pauseJob, resumeJob, cancelJob, getProgress, listResearchJobs, getWorkerHeartbeat, MAX_BATCH, type JobSummary, type Heartbeat,
+} from './research.js';
+export { enrichBacklog, requestWork, listRequests, type EnrichBacklog, type RequestRow } from './worker-queue.js';
+export { listTerritories, type TerritoryRow } from './territories.js';

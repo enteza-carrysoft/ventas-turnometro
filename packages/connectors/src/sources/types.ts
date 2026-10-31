@@ -31,6 +31,8 @@ export interface SourceRequest {
   /** candidatos que aún caben en el lote del trabajo */
   limit: number;
   territory?: { name: string; province: string } | undefined;
+  /** pares etiqueta=valor de OpenStreetMap del segmento del trabajo; mandan sobre los de la configuración del adaptador */
+  osmFilters?: Array<[string, string]> | undefined;
 }
 export interface SourceResult {
   candidates: SourceCandidate[];

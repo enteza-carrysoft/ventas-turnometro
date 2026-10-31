@@ -158,6 +158,7 @@ test('exportación: solo fichas aprobadas y sin teléfonos ni emails; el autóno
 });
 
 test('segmentos: marketing aprueba un borrador y el estado cambia', async () => {
+  const approvedBefore = Number((await one<{ n: string }>(`select count(*) n from audit_log where action = 'segment.approved'`)).n);
   await seedSegment(pool, 'clinicas-e2e');
   const page = await mkt.newPage();
   await page.goto('/segmentos');
@@ -165,7 +166,7 @@ test('segmentos: marketing aprueba un borrador y el estado cambia', async () => 
   await expect(card.getByTestId('estado-segmento')).toContainText('Borrador');
   await card.getByRole('button', { name: 'Aprobar segmento' }).click();
   await expect(card.getByTestId('estado-segmento')).toContainText('Aprobado');
-  expect((await one<{ n: string }>(`select count(*) n from audit_log where action = 'segment.approved'`)).n).toBe('1');
+  expect(Number((await one<{ n: string }>(`select count(*) n from audit_log where action = 'segment.approved'`)).n)).toBe(approvedBefore + 1);
   await page.close();
 });
 

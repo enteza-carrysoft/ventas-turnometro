@@ -1,4 +1,4 @@
-import { adminUrl, ingestCandidate, saveEnrichment, saveSegmentDrafts, TEST_APP_PW, urlFor } from '@turnosala/db';
+import { adminUrl, approveSegment, ingestCandidate, saveEnrichment, saveSegmentDrafts, TEST_APP_PW, urlFor } from '@turnosala/db';
 import pg from 'pg';
 import { E2E_DB } from '../../playwright.config.js';
 
@@ -29,6 +29,16 @@ export async function seedProspect(pool: pg.Pool, over: { legal?: 'company' | 's
   }, { fetchedAt: AT, extractorVersion: 'extract-v1' });
   if (over.legal) await pool.query('update prospects set legal_form = $2 where id = $1', [r.prospectId, over.legal]);
   return { id: r.prospectId, name };
+}
+
+/** Lo mínimo para poder lanzar una investigación: una fuente activa, dos municipios y un segmento aprobado. */
+export async function seedResearchBasics(pool: pg.Pool): Promise<{ segmentName: string }> {
+  await pool.query(`update allowed_sources set active = true where id = 'osm'`);
+  await pool.query(`insert into territories (ine_code, name, province, region, population) values ('41091','Sevilla','Sevilla','Andalucía',680000), ('41038','Dos Hermanas','Sevilla','Andalucía',135000) on conflict do nothing`);
+  await seedSegment(pool, 'investigacion-e2e');
+  const id = ((await pool.query(`select id from segments where slug = 'investigacion-e2e'`)).rows[0] as { id: string }).id;
+  await approveSegment(pool, id, { userId: 'e2e', role: 'admin' });
+  return { segmentName: 'Segmento investigacion-e2e' };
 }
 
 export async function seedSegment(pool: pg.Pool, slug: string): Promise<void> {

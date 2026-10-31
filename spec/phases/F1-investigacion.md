@@ -166,6 +166,21 @@ aprobación expresa del gasto (P6.2).
   registrable se fusionan; el nombre muy parecido a un cliente bloquea aunque sea otra empresa (queda visible con motivo para revisión).
   Los adaptadores reales de HTTP (con `robots.txt` y 1 req/s) y de DNS para `checkWebsite`/`checkEmailMx` se escriben con el rastreador (F1.6);
   la clasificación de emails genéricos/personales (REQ-ENR-03) también va en F1.6.
+- **Worker y pantallas de investigación (31/10/2026) — cierre operativo de F1.4/F1.2** — `apps/worker` (`tick`, `main`, `config`), migración 0010, `db/worker-queue`, rutas
+  `/api/investigacion/*` y `/api/analisis`, pantalla `/investigacion` y botón «Pedir análisis de mercado» en `/segmentos`, `deploy/Dockerfile.worker`, 7 e2e nuevos (22 en total).
+  **Decisiones mías (revisables):** (1) **el panel no llama al modelo ni a las fuentes**: encola (`research_jobs`, `worker_requests`) y el worker ejecuta; así las claves solo viven
+  en el worker. (2) **El gasto en IA está APAGADO por defecto**: sólo `ENRICH_ENABLED=1` (valor exacto) lo enciende y entonces exige `OPENROUTER_API_KEY`. Con él apagado el worker sigue
+  investigando con fuentes abiertas (coste 0) pero no enriquece ni atiende análisis, y la pantalla lo dice. (3) **Una sola instancia** del worker (cerrojo de sesión de Postgres). (4)
+  **Enriquecimiento con reintentos acotados**: 3 intentos con espera 1 h / 6 h / 24 h; un fallo del sistema (presupuesto agotado, proveedor deshabilitado, falta de DPA…) para el lote y **devuelve
+  los intentos** (no se queman los reintentos de las fichas por un problema ajeno a ellas). (5) **Una fuente caída no se golpea 9 veces**: el adaptador ya reintenta 3 veces con espera, así que
+  un `SourceError` marca la tarea como fallida a la primera (`failTask(..., { final: true })`); lo detectó la prueba con el proceso real. (6) Solo se investiga con **segmentos
+  aprobados**, y sus `osmFilters` viajan en cada petición de fuente (mandan sobre los del adaptador). (7) El worker marca un **latido** en `settings`; el panel avisa «Sin señal del worker» pasados
+  90 s y se refresca solo cada 5 s mientras haya trabajo (CA4, ≤ 10 s, probado en e2e sin recargar). (8) Máx. 100 € de presupuesto por trabajo desde la pantalla. **Mutaciones:** latido,
+  existencia del trabajo, segmento sin aprobar, presupuesto sin tope, análisis duplicado, devolución de intentos, parada ante fallo sistémico, cerrojo, límite de lote, refresco automático y
+  `final` ante `SourceError` hacen fallar tests. **Guardianes que acertaron:** T-ARQ-LLM detectó una URL de proveedor en un test mío y el test de `.env.example` un valor `0`; los corregí sin
+  tocar los guardianes. **Probado con el proceso real:** el worker arranca, se niega a una segunda instancia (código 1) y, dentro de Docker, escribe su latido y sale con código 0 al parar.
+  **Límites:** (a) el enriquecimiento no está atado a un trabajo concreto (su coste no cuenta contra el presupuesto del trabajo, sólo contra el diario de la pasarela); (b) un único worker
+  procesa en serie; (c) el worker corre con `tsx` (sin empaquetar); (d) sin mapa ni «siguiente mejor acción» en la ficha todavía.
 - **F1.10 — arnés preparado, medición PENDIENTE (31/10/2026)** — `core/eval/golden` (esquema de anotación y métricas puras), `apps/worker/eval` + `golden-files` (ejecución y carga),
   `npm run golden:snapshot` y `npm run eval:extract` (`--route`, `--model`, `--max-eur`, `--dir`, `--dry-run`) y la guía `tests/golden/README.md`. **No se ha ejecutado ninguna
   evaluación real: no hay anotaciones, clave ni gasto aprobado, y la puerta de ≥ 90 % sigue sin medirse.** **Decisiones mías (revisables):** (1) se anota sobre una

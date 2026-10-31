@@ -1,5 +1,6 @@
 import { claimTask, createResearchJob, createTestDb, getProgress, ingestCandidate, type TestDb } from '@turnosala/db';
 import type { SourceCandidate } from '@turnosala/connectors';
+import { SourceError } from '@turnosala/connectors';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { processOne, runUntilIdle, type ResearchDeps, type SourceAdapter } from './research.js';
 
@@ -42,6 +43,14 @@ describe('processOne / runUntilIdle (REQ-RES-01)', () => {
     expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ ineCode: '41038', territory: { name: 'Dos Hermanas', province: 'Sevilla' } }));
   });
 
+  it('pasa al adaptador los filtros de OpenStreetMap definidos en el segmento del trabajo', async () => {
+    await t.admin.query(`update segments set definition = $2 where id = $1`, [segmentId, JSON.stringify({ osmFilters: [['healthcare', 'dentist'], ['shop', 'optician']] })]);
+    const fetch = vi.fn(async () => ({ candidates: [], costEur: 0 }));
+    const { jobId } = await createResearchJob(t.app, { segmentId, ineCodes: ['41091'], sourceIds: ['osm'], budgetEur: 5, createdBy: 'm' });
+    await processOne(deps({ fetch }), jobId);
+    expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ osmFilters: [['healthcare', 'dentist'], ['shop', 'optician']] }));
+  });
+
   it('no ingesta más candidatos de los que caben en el lote aunque la fuente devuelva de más', async () => {
     const { jobId } = await createResearchJob(t.app, { segmentId, ineCodes: ['41091'], sourceIds: ['osm'], budgetEur: 5, maxCandidates: 4, createdBy: 'm' });
     const before = await prospects();
@@ -77,6 +86,14 @@ describe('processOne / runUntilIdle (REQ-RES-01)', () => {
     expect(await runUntilIdle(deps({ fetch }), { jobId })).toMatchObject({ failed: 3, done: 0 });
     expect(fetch).toHaveBeenCalledTimes(3);
     expect(await getProgress(t.app, jobId)).toMatchObject({ status: 'failed', errorsBySource: [{ sourceId: 'osm', failed: 1, lastError: 'HTTP 429' }] });
+  });
+
+  it('un error de fuente que el adaptador ya reintentó (SourceError) NO se vuelve a reintentar: una sola llamada y tarea fallida', async () => {
+    const { jobId } = await createResearchJob(t.app, { segmentId, ineCodes: ['41091'], sourceIds: ['osm'], budgetEur: 5, createdBy: 'm' });
+    const fetch = vi.fn(async () => { throw new SourceError('rate_limited', 'Overpass: HTTP 429'); });
+    expect(await runUntilIdle(deps({ fetch }), { jobId })).toMatchObject({ failed: 1, done: 0 });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(await getProgress(t.app, jobId)).toMatchObject({ status: 'failed', errorsBySource: [{ sourceId: 'osm', failed: 1, lastError: 'Overpass: HTTP 429' }] });
   });
 
   it('sin adaptador para la fuente la tarea falla con un error claro y no se ingesta nada', async () => {

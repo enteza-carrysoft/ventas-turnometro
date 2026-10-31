@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { cancelJob, claimTask, createResearchJob, failTask, finishTask, getProgress, pauseJob, resumeJob } from './research.js';
+import { cancelJob, claimTask, createResearchJob, failTask, finishTask, getProgress, getWorkerHeartbeat, listResearchJobs, pauseJob, resumeJob, touchWorkerHeartbeat } from './research.js';
 import { createTestDb, type TestDb } from './testing.js';
 import { uuidv7 } from './uuid.js';
 
@@ -51,6 +51,39 @@ describe('crear un trabajo (REQ-RES-01 CA1/CA2)', () => {
   });
 });
 
+describe('segmento aprobado', () => {
+  it('solo se investiga con un segmento aprobado: borrador, retirado o inexistente se rechazan sin crear nada', async () => {
+    const draft = uuidv7();
+    await t.admin.query(`insert into segments (id, product_id, slug, name, status, definition) select $1, product_id, 'borrador-x', 'B', 'draft', '{}' from segments limit 1`, [draft]);
+    const before = Number(((await t.app.query('select count(*) n from research_jobs')).rows[0] as { n: string }).n);
+    await expect(job({ segmentId: draft })).rejects.toThrow(/aprobado/);
+    await expect(job({ segmentId: uuidv7() })).rejects.toThrow(/segmento/i);
+    expect(Number(((await t.app.query('select count(*) n from research_jobs')).rows[0] as { n: string }).n)).toBe(before);
+  });
+});
+
+describe('listResearchJobs y latido del worker (panel)', () => {
+  it('lista los trabajos recientes con segmento, avance, coste y último error', async () => {
+    const r = await job({ ineCodes: ['41091', '41038'], sourceIds: ['osm'] });
+    const a = (await claimTask(t.app, { workerId: 'w', now: T0, jobId: r.jobId }))!;
+    await finishTask(t.app, a.id, { candidates: 3, costEur: 0.4 }, plus(1));
+    const b = (await claimTask(t.app, { workerId: 'w', now: plus(2), jobId: r.jobId }))!;
+    await failTask(t.app, b.id, 'Overpass: HTTP 429', plus(3), { final: true });
+    const item = (await listResearchJobs(t.app, 50)).find((j) => j.id === r.jobId)!;
+    expect(item).toMatchObject({ segmentName: 'Clínicas', status: 'done', candidates: 3, costEur: 0.4, maxCandidates: 200, budgetEur: 10, tasks: { done: 1, failed: 1, pending: 0, running: 0, skipped: 0 }, lastError: 'Overpass: HTTP 429', createdBy: 'marketing@x.es' });
+    const ids = (await listResearchJobs(t.app, 2)).map((j) => j.id);
+    expect(ids).toHaveLength(2);
+  });
+
+  it('el latido guarda cuándo respondió el worker por última vez y si el LLM está activo; sin latido devuelve null', async () => {
+    expect(await getWorkerHeartbeat(t.app)).toBeNull();
+    await touchWorkerHeartbeat(t.app, { workerId: 'w1', llmEnabled: false }, T0);
+    expect(await getWorkerHeartbeat(t.app)).toEqual({ workerId: 'w1', llmEnabled: false, at: T0 });
+    await touchWorkerHeartbeat(t.app, { workerId: 'w1', llmEnabled: true }, plus(60));
+    expect(await getWorkerHeartbeat(t.app)).toEqual({ workerId: 'w1', llmEnabled: true, at: plus(60) });
+  });
+});
+
 describe('reclamar tareas: sin duplicados y reanudable (CA3)', () => {
   it('cinco workers a la vez sobre 3 tareas obtienen 3 tareas distintas y 2 nulos', async () => {
     const r = await job({ ineCodes: ['41091', '41038', '41004'], sourceIds: ['osm'] });
@@ -96,6 +129,17 @@ describe('fallos y reintentos (REQ-RES-03)', () => {
     const other = (await claimTask(t.app, { workerId: 'w', now: plus(10), jobId: r.jobId }))!;
     await finishTask(t.app, other.id, { candidates: 1, costEur: 0 }, plus(11));
     expect(await status(r.jobId)).toBe('done'); // una tarea hecha ⇒ done aunque otra fallara
+  });
+});
+
+describe('fallo definitivo', () => {
+  it('failTask con final:true deja la tarea fallida al primer intento (la fuente ya agotó sus reintentos) y el trabajo sigue con el resto', async () => {
+    const r = await job({ ineCodes: ['41091', '41038'], sourceIds: ['osm'] });
+    const a = (await claimTask(t.app, { workerId: 'w', now: T0, jobId: r.jobId }))!;
+    await failTask(t.app, a.id, 'Overpass: HTTP 429', plus(1), { final: true });
+    const p = await getProgress(t.app, r.jobId);
+    expect(p.tasks).toMatchObject({ failed: 1, pending: 1 });
+    expect(p.errorsBySource).toEqual([{ sourceId: 'osm', failed: 1, lastError: 'Overpass: HTTP 429' }]);
   });
 });
 

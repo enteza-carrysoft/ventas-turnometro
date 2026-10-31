@@ -39,14 +39,22 @@ services:
         condition: service_healthy
 
   worker:
-    profiles: ["later"]   # F1: aún sin código
     build:
       context: ..
-      dockerfile: deploy/Dockerfile
-      args:
-        APP: worker
+      dockerfile: deploy/Dockerfile.worker
+    restart: unless-stopped
     environment:
       APP_MODE: ${APP_MODE:-sandbox}
+      DATABASE_URL: ${DATABASE_URL}
+      # El gasto en IA está APAGADO salvo ENRICH_ENABLED=1, y entonces exige OPENROUTER_API_KEY (ver deploy/.env.example).
+      ENRICH_ENABLED: ${ENRICH_ENABLED:-0}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-}
+      CRAWLER_USER_AGENT: ${CRAWLER_USER_AGENT:-}
+      OSM_ENDPOINT: ${OSM_ENDPOINT:-}
+      WORKER_INTERVAL_MS: ${WORKER_INTERVAL_MS:-15000}
+      WORKER_RESEARCH_TASKS: ${WORKER_RESEARCH_TASKS:-20}
+      WORKER_ENRICH_BATCH: ${WORKER_ENRICH_BATCH:-5}
     depends_on:
       postgres:
         condition: service_healthy

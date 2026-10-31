@@ -1,4 +1,4 @@
-import type { SourceAdapter, SourceCandidate } from '@turnosala/connectors';
+import { SourceError, type SourceAdapter, type SourceCandidate } from '@turnosala/connectors';
 import { claimTask, failTask, finishTask, ingestCandidate, type ClaimedTask } from '@turnosala/db';
 import type pg from 'pg';
 
@@ -18,6 +18,11 @@ export interface ResearchDeps {
 async function territoryOf(pool: pg.Pool, ineCode: string | null): Promise<{ name: string; province: string } | undefined> {
   if (!ineCode) return undefined;
   return (await pool.query('select name, province from territories where ine_code = $1', [ineCode])).rows[0] as { name: string; province: string } | undefined;
+}
+
+async function osmFiltersOf(pool: pg.Pool, segmentId: string): Promise<Array<[string, string]> | undefined> {
+  const def = (await pool.query('select definition from segments where id = $1', [segmentId])).rows[0] as { definition: { osmFilters?: Array<[string, string]> } } | undefined;
+  return def?.definition.osmFilters?.length ? def.definition.osmFilters : undefined;
 }
 
 const clock = (d: ResearchDeps): Date => (d.now ?? (() => new Date()))();
@@ -40,12 +45,14 @@ async function execute(deps: ResearchDeps, task: ClaimedTask): Promise<'done' | 
   }
   try {
     const territory = await territoryOf(deps.pool, task.ineCode);
-    const res = await adapter.fetch({ sourceId: task.sourceId, ineCode: task.ineCode, cursor: task.cursor, limit: task.remainingBatch, ...(territory ? { territory } : {}) });
+    const osmFilters = await osmFiltersOf(deps.pool, task.segmentId);
+    const res = await adapter.fetch({ sourceId: task.sourceId, ineCode: task.ineCode, cursor: task.cursor, limit: task.remainingBatch, ...(territory ? { territory } : {}), ...(osmFilters ? { osmFilters } : {}) });
     const created = await ingestUpTo(deps.pool, res.candidates, task.remainingBatch);
     await finishTask(deps.pool, task.id, { candidates: created, costEur: res.costEur, cursor: res.cursor }, clock(deps));
     return 'done';
   } catch (e) {
-    await failTask(deps.pool, task.id, e instanceof Error ? e.message : String(e), clock(deps));
+    // SourceError = el adaptador ya reintentó con espera exponencial (REQ-RES-03): reintentar la tarea aquí golpearía otra vez a una fuente caída.
+    await failTask(deps.pool, task.id, e instanceof Error ? e.message : String(e), clock(deps), { final: e instanceof SourceError });
     return 'failed';
   }
 }

@@ -118,8 +118,9 @@ export function createOsmAdapter(o: OsmOptions): SourceAdapter {
   return {
     async fetch(req: SourceRequest): Promise<SourceResult> {
       if (!req.ineCode) throw new Error('OSM necesita un municipio (código INE)');
-      if (o.filters.length === 0) throw new Error('OSM necesita filtros de etiquetas (segmento sin definir)');
-      const text = buildQuery(req.ineCode, o.filters);
+      const filters = req.osmFilters?.length ? req.osmFilters : o.filters;
+      if (filters.length === 0) throw new Error('OSM necesita filtros de etiquetas (segmento sin definir)');
+      const text = buildQuery(req.ineCode, filters);
       const run = tail.then(() => query(text));
       tail = run.catch(() => undefined);
       const body = await run;

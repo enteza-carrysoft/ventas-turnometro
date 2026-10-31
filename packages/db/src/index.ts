@@ -15,8 +15,8 @@ export { parseCsv } from './csv.js';
 export { annotateVerification, type VerificationResults } from './verification.js';
 export { saveEnrichment, type SaveEnrichmentOptions, type SaveEnrichmentResult } from './enrichment.js';
 export {
-  createResearchJob, claimTask, finishTask, failTask, pauseJob, resumeJob, cancelJob, getProgress, MAX_BATCH, MAX_ATTEMPTS,
-  type CreateJobInput, type ClaimOptions, type ClaimedTask, type FinishInfo, type Progress,
+  createResearchJob, claimTask, finishTask, failTask, pauseJob, resumeJob, cancelJob, getProgress, listResearchJobs, touchWorkerHeartbeat, getWorkerHeartbeat, MAX_BATCH, MAX_ATTEMPTS,
+  type CreateJobInput, type ClaimOptions, type ClaimedTask, type FinishInfo, type Progress, type JobSummary, type Heartbeat,
 } from './research.js';
 export { saveSegmentDrafts, approveSegment, editSegment, retireSegment, type Actor as SegmentActor, type SegmentPatch } from './segments.js';
 export { importTerritories, listTerritories, saveSizing, type TerritoryImportResult, type TerritoryRow, type SaveSizingInput } from './territories.js';
@@ -24,3 +24,7 @@ export {
   listQueue, getCard, exportApprovedCsv, reviewProspect, correctField, bulkApprove, REVIEWABLE,
   type Card, type QueueItem, type Reviewer, type ReviewInput, type ReviewResult, type CorrectInput, type CorrectResult, type BulkResult,
 } from './review.js';
+export {
+  claimEnrichable, unclaimEnrichable, recordEnrichFailure, enrichBacklog, requestWork, claimRequest, finishRequest, failRequest, listRequests, MAX_ENRICH_ATTEMPTS,
+  type EnrichBacklog, type ClaimedRequest, type RequestKind, type RequestRow,
+} from './worker-queue.js';

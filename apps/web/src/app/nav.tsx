@@ -7,6 +7,7 @@ export function Nav() {
   return (
     <nav aria-label="Principal" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
       <Link href="/" style={linkStyle}>Panel</Link>
+      <Link href="/investigacion" style={linkStyle}>Investigación</Link>
       <Link href="/fichas" style={linkStyle}>Cola de revisión</Link>
       <Link href="/segmentos" style={linkStyle}>Segmentos</Link>
       <a href="/api/fichas/export" style={linkStyle}>Exportar fichas aprobadas (CSV)</a>

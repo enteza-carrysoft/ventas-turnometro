@@ -22,6 +22,7 @@
     "approve:product-facts": "tsx scripts/approve-product-facts.ts",
     "customers:import": "tsx scripts/import-customers.ts",
     "territories:import": "tsx scripts/import-territories.ts",
+    "worker": "tsx apps/worker/src/main.ts",
     "golden:snapshot": "tsx scripts/golden-snapshot.ts",
     "eval:extract": "tsx scripts/eval-extract.ts"
   },
