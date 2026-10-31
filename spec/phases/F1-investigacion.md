@@ -166,6 +166,20 @@ aprobación expresa del gasto (P6.2).
   registrable se fusionan; el nombre muy parecido a un cliente bloquea aunque sea otra empresa (queda visible con motivo para revisión).
   Los adaptadores reales de HTTP (con `robots.txt` y 1 req/s) y de DNS para `checkWebsite`/`checkEmailMx` se escriben con el rastreador (F1.6);
   la clasificación de emails genéricos/personales (REQ-ENR-03) también va en F1.6.
+- **F1.10 — arnés preparado, medición PENDIENTE (31/10/2026)** — `core/eval/golden` (esquema de anotación y métricas puras), `apps/worker/eval` + `golden-files` (ejecución y carga),
+  `npm run golden:snapshot` y `npm run eval:extract` (`--route`, `--model`, `--max-eur`, `--dir`, `--dry-run`) y la guía `tests/golden/README.md`. **No se ha ejecutado ninguna
+  evaluación real: no hay anotaciones, clave ni gasto aprobado, y la puerta de ≥ 90 % sigue sin medirse.** **Decisiones mías (revisables):** (1) se anota sobre una
+  **instantánea congelada del texto ya minimizado** (sin nombres de personas ni emails personales), para que la persona y el modelo vean exactamente lo mismo y el resultado sea
+  reproducible; las instantáneas son texto de terceros y quedan **locales y fuera de git**, solo se versionan las anotaciones (`tests/golden/entries/`). (2) **Precisión** =
+  aciertos / devueltos sobre campos + señales + contactos + forma jurídica, en micro-promedio (se suman los recuentos de todas las fichas, no se promedian porcentajes) y medida
+  sobre lo que **sobrevive a la verificación literal**; la **tasa de rechazo literal** (citas inventadas descartadas / propuestas) se informa aparte. La puerta (≥ 90 %) se compara
+  con enteros (27/30 = 90 %) para que no dependa de la coma flotante, y sin ninguna respuesta no se supera. (3) La anotación debe ser **exhaustiva**: lo que la web dice y no se
+  anota cuenta como error del modelo. (4) `--model` sustituye el modelo de la ruta solo en memoria (y lo permite para esa ejecución); la configuración de la BD no cambia.
+  (5) `--max-eur` (por defecto 5) corta la ejecución al alcanzar el gasto acumulado; `--dry-run` valida las anotaciones sin llamar al modelo. (6) `--provider` (design §11) no
+  existe aún: solo hay adaptador `openrouter` (ADR-005). **Mutaciones:** puerta al 80 %, pasar sin datos, promediar mal, no normalizar valores, sin tope de gasto, aceptar
+  entradas sin anotar y aceptar un id distinto del archivo hacen fallar tests. **Para cerrar F1.10 hace falta:** 50 webs anotadas por una persona (2–3 h), `OPENROUTER_API_KEY` creada
+  por ti fuera del chat, D-16 (contrato y región de OpenRouter) y un tope de gasto aprobado (propongo ≤ 10 €); con eso, `npm run eval:extract` mide la precisión, la tasa de rechazo y
+  el coste real por ficha (la estimación de ≈ 0,14 $/ficha es una hipótesis sin medir).
 - **F1.9 completada salvo mapa y canales (31/10/2026)** — `core/review` (muestreo y CSV seguro), `db/review` (cola, ficha, aprobar/descartar/bloquear, corregir, aprobación
   en bloque, exportación), `apps/web` (rutas `/api/fichas/*` y `/api/segmentos/*`, pantallas `/fichas`, `/fichas/[id]`, `/segmentos`) y 9 e2e nuevos. **Decisiones
   mías (revisables):** (1) **sin Tailwind ni shadcn/ui por ahora**: el panel sigue con estilos en línea; una librería de UI no aporta a ningún criterio de aceptación de

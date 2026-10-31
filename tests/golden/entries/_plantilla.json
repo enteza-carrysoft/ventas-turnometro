@@ -1,0 +1,17 @@
+{
+  "id": "clinica-ejemplo",
+  "website": "https://www.clinica-ejemplo.es",
+  "annotated_by": "Tu nombre",
+  "annotated_at": "2026-11-20",
+  "notes": "Opcional. Los archivos que empiezan por «_» no se evalúan.",
+  "expected": {
+    "fields": { "name": "Clínica Ejemplo", "sites_count": "2", "consultation_rooms": "4", "specialties": "odontología, ortodoncia", "opening_hours": "L-V 9:00-20:00" },
+    "signals": ["varias_consultas", "sala_espera", "cita_previa_online"],
+    "contact_points": [
+      { "type": "switchboard_phone", "value": "954 12 34 56" },
+      { "type": "generic_email", "value": "info@clinica-ejemplo.es" },
+      { "type": "postal_address", "value": "Calle Sierpes 12, 41004 Sevilla" }
+    ],
+    "legal_form": "company"
+  }
+}

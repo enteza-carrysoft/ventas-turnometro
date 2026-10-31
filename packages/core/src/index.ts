@@ -11,3 +11,4 @@ export * from './extraction/prompt.js';
 export * from './market/segments.js';
 export * from './market/size.js';
 export * from './review/review.js';
+export * from './eval/golden.js';

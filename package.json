@@ -21,7 +21,9 @@
     "seed:product-facts": "tsx scripts/seed-product-facts.ts",
     "approve:product-facts": "tsx scripts/approve-product-facts.ts",
     "customers:import": "tsx scripts/import-customers.ts",
-    "territories:import": "tsx scripts/import-territories.ts"
+    "territories:import": "tsx scripts/import-territories.ts",
+    "golden:snapshot": "tsx scripts/golden-snapshot.ts",
+    "eval:extract": "tsx scripts/eval-extract.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

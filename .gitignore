@@ -11,3 +11,6 @@ test-results/
 playwright-report/
 *.tsbuildinfo
 next-env.d.ts
+
+# Conjunto dorado (F1.10): el texto de webs de terceros se queda en local; solo se versionan las anotaciones
+tests/golden/snapshots/
