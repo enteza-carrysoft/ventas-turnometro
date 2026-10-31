@@ -1,0 +1,4 @@
+# Solo para VPS (perfil "vps"). Sustituir los dominios cuando se resuelva D-06.
+go.turnosala.com {
+	reverse_proxy web:3000
+}
