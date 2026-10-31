@@ -18,3 +18,5 @@ export {
   createResearchJob, claimTask, finishTask, failTask, pauseJob, resumeJob, cancelJob, getProgress, MAX_BATCH, MAX_ATTEMPTS,
   type CreateJobInput, type ClaimOptions, type ClaimedTask, type FinishInfo, type Progress,
 } from './research.js';
+export { saveSegmentDrafts, approveSegment, editSegment, retireSegment, type Actor as SegmentActor, type SegmentPatch } from './segments.js';
+export { importTerritories, listTerritories, saveSizing, type TerritoryImportResult, type TerritoryRow, type SaveSizingInput } from './territories.js';

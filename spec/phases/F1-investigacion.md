@@ -166,6 +166,24 @@ aprobación expresa del gasto (P6.2).
   registrable se fusionan; el nombre muy parecido a un cliente bloquea aunque sea otra empresa (queda visible con motivo para revisión).
   Los adaptadores reales de HTTP (con `robots.txt` y 1 req/s) y de DNS para `checkWebsite`/`checkEmailMx` se escriben con el rastreador (F1.6);
   la clasificación de emails genéricos/personales (REQ-ENR-03) también va en F1.6.
+- **F1.2 completada salvo la pantalla (31/10/2026)** — `core/market/segments` (esquema, prompt, verificación), `db/segments` (borradores, aprobar, editar, retirar) y
+  `apps/worker/analyze` (orquestación). Todo con modelo simulado y web simulada; **sin gasto ni red**. **Decisiones mías (revisables):** (1) el modelo solo propone:
+  los segmentos nacen en `draft`, el encaje es siempre `inferred` con razonamiento y solo se aceptan las URL que de verdad se rastrearon (CA1; sin ninguna válida, el
+  segmento se rechaza). (2) Aprobar, editar y retirar exigen rol `marketing`/`admin` y quedan en `audit_log`; el encaje y las fuentes (inferidos) **no se editan a mano**.
+  (3) Repetir el análisis actualiza los borradores pero **nunca sobrescribe** un segmento aprobado o retirado. (4) Sin `product_facts` aprobados no se llama al modelo.
+  (5) El segmento trae `osm_filters` (para el adaptador de F1.5) y `signals` del vocabulario de puntuación; lo que no está en el vocabulario se quita y se informa; los
+  filtros OSM con caracteres peligrosos se descartan. (6) **No se analizan competidores todavía**: la ruta `market.analyze` prevé un agente con `web_search`/`web_fetch`, que
+  no está verificado contra la API real (pendiente con `web_search`, F1.5); hoy solo lee la web del producto. **Mutaciones:** URLs sin filtrar, cualquier rol aprueba,
+  sobrescribir aprobados y aprobar sin comprobar el estado hacen fallar tests. **Pendiente:** la vista de aprobación (pantalla) va con F1.9.
+- **F1.3 completada en lo verificable (31/10/2026)** — `core/market/size` (función pura), `db/territories` (carga de municipios por CSV y guardado de dimensionamientos),
+  migración 0009 (`market_sizings`) y `npm run territories:import`. **Decisiones mías (revisables):** (1) el modelo **no pone cifras**: `market.size` es código
+  determinista, sin LLM. (2) Separa **contado** (recuento oficial por municipio; el 0 cuenta) de **estimado** (total provincial − contado, repartido por población con el
+  método del mayor resto, suma exacta) y de **unknown** (sin total provincial o sin población: sin cifra, no suma); nunca produce negativos y avisa si lo contado supera el
+  total. (3) Fuente y licencia anotadas en cada resultado: INE/DIRCE, **CC BY-SA 4.0 según el pie de ine.es; el aviso legal de reutilización sigue sin leer**
+  (`licenseVerified: false`). **Lo que NO pude verificar:** el identificador de la tabla municipal del DIRCE y su formato de respuesta. Los metadatos del INE que leí
+  solo documentan niveles nacional, autonómico y provincial, y el DIRCE municipal suprime celdas con menos de 4 empresas (esas serán «estimadas»). Por eso **no hay
+  cliente HTTP del INE**: hace falta localizar la tabla en INEbase (o pedirla al INE) antes de programarlo, y grabar fixtures reales. **Los municipios de Sevilla no están
+  cargados**: necesito el CSV del INE (nomenclátor + padrón: `ine_code,name,province,region,population`) o autorización para descargarlo del INE.
 - **F1.5 completada solo en parte (31/10/2026)** — `connectors/sources`: contrato común (`SourceAdapter`), reintentos, veto de dominios, caché y adaptador **OSM/Overpass**.
   Fixtures **sintéticas** con la forma documentada de Overpass (no capturas reales); ninguna prueba usa red. **Decisiones mías (revisables):** (1) reintentos
   (RES-03): máx. 3 intentos; 429/406 esperan 30 s (política de Overpass), 5xx/red/tiempo agotado 2 s y 4 s; 403 y respuestas no JSON no se reintentan; al

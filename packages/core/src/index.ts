@@ -8,3 +8,5 @@ export * from './verify/verify.js';
 export * from './extraction/redact.js';
 export * from './extraction/extraction.js';
 export * from './extraction/prompt.js';
+export * from './market/segments.js';
+export * from './market/size.js';
