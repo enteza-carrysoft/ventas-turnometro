@@ -1,47 +1,33 @@
-// Festivos conocidos para las franjas de llamadas y visitas (CG-05).
+// Festivos de la Comunidad Autónoma de Andalucía para las franjas de llamadas y visitas (CG-05).
 //
-// ESTADO: NO verificado contra el BOE/BOJA (los intentos de consulta del 31/10/2026 fallaron). Solo se cargan
-//   · fechas fijas por ley (nacionales y el 28-feb de Andalucía), y
-//   · Jueves y Viernes Santo, calculados a partir de la Pascua (algoritmo gregoriano).
-// NO se cargan los traslados por caer en domingo (p. ej. 1-nov-2026 → lunes 2-nov en Andalucía): están pendientes
-// de verificar contra el BOE/BOJA (tarea F0.9 / puerta G0). Los festivos locales de cada municipio tampoco se
-// cargan: el comercial los respeta. Un año fuera de COVERED_YEARS queda sin festivos y `holidayWarning()` avisa.
+// FUENTE (verificada el 31/10/2026 leyendo los anexos oficiales del BOJA):
+//   · 2026 → Decreto 101/2025, de 14 de mayo (BOJA núm. 93, de 19/05/2025, pág. 6889).
+//   · 2027 → Decreto 84/2026, de 29 de abril (BOJA núm. 84, de 05/05/2026, pág. 5812).
+// Los traslados por caer en domingo ya vienen aplicados en esas listas (2026: 1-nov → 2-nov y 6-dic → 7-dic;
+// 2027: 28-feb → 1-mar y 15-ago → 16-ago).
+//
+// LIMITACIONES (documentadas en spec/research/proveedores.md):
+//   · Solo Andalucía. Para destinos de otras comunidades (oleadas 2-3 con otras comunidades) hay que cargar sus calendarios.
+//   · No se cargan las dos fiestas locales de cada municipio (BOJA núm. 79 de 27/04/2026 las lista para 2026):
+//     el comercial las respeta. Cargarlas por municipio INE es mejora de F4.
+//   · Un año fuera de COVERED_YEARS queda sin festivos y `holidayWarning()` avisa: no se inventan fechas.
+//     Cada año hay que añadir el decreto nuevo (se publica en abril-mayo del año anterior).
 
-export const COVERED_YEARS = [2026, 2027] as const;
+const ANDALUCIA: Readonly<Record<number, readonly string[]>> = {
+  2026: [
+    '2026-01-01', '2026-01-06', '2026-02-28', '2026-04-02', '2026-04-03', '2026-05-01',
+    '2026-08-15', '2026-10-12', '2026-11-02', '2026-12-07', '2026-12-08', '2026-12-25',
+  ],
+  2027: [
+    '2027-01-01', '2027-01-06', '2027-03-01', '2027-03-25', '2027-03-26', '2027-05-01',
+    '2027-08-16', '2027-10-12', '2027-11-01', '2027-12-06', '2027-12-08', '2027-12-25',
+  ],
+};
 
-const FIXED_MM_DD = [
-  '01-01', '01-06', '05-01', '08-15', '10-12', '11-01', '12-06', '12-08', '12-25', // nacionales
-  '02-28', // Día de Andalucía
-] as const;
-
-/** Domingo de Pascua (algoritmo anónimo gregoriano). */
-function easterSunday(year: number): Date {
-  const a = year % 19;
-  const b = Math.floor(year / 100);
-  const c = year % 100;
-  const d = Math.floor(b / 4);
-  const e = b % 4;
-  const f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4);
-  const k = c % 4;
-  const l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31);
-  const day = ((h + l - 7 * m + 114) % 31) + 1;
-  return new Date(Date.UTC(year, month - 1, day));
-}
-
-function iso(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
+export const COVERED_YEARS: readonly number[] = Object.keys(ANDALUCIA).map(Number).sort();
 
 export function holidaysForYear(year: number): string[] {
-  if (!(COVERED_YEARS as readonly number[]).includes(year)) return [];
-  const easter = easterSunday(year).getTime();
-  const day = 86_400_000;
-  return [...FIXED_MM_DD.map((md) => `${year}-${md}`), iso(new Date(easter - 3 * day)), iso(new Date(easter - 2 * day))].sort();
+  return [...(ANDALUCIA[year] ?? [])];
 }
 
 export function holidaysAround(at: Date): string[] {
@@ -52,7 +38,5 @@ export function holidaysAround(at: Date): string[] {
 /** Aviso para el panel si el año de `at` no está cargado (no se inventan fechas). */
 export function holidayWarning(at: Date): string | null {
   const y = at.getUTCFullYear();
-  return (COVERED_YEARS as readonly number[]).includes(y)
-    ? null
-    : `Sin festivos cargados para ${y}: las franjas no excluyen festivos ese año.`;
+  return COVERED_YEARS.includes(y) ? null : `Sin festivos cargados para ${y}: las franjas no excluyen festivos ese año.`;
 }
