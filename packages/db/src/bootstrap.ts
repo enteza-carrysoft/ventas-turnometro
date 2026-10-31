@@ -32,6 +32,7 @@ export async function bootstrapDatabase(admin: pg.Client, opts: BootstrapOptions
     }
     const hasDb = await admin.query('select 1 from pg_database where datname = $1', [db]);
     if (!hasDb.rowCount) await admin.query(`create database ${db} owner migrator`);
+    else await admin.query(`alter database ${db} owner to migrator`); // p. ej. la base que crea el contenedor de Postgres
     await admin.query(`revoke all on database ${db} from public`);
     await admin.query(`grant connect on database ${db} to app, migrator`);
   } finally {

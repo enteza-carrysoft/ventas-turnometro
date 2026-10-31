@@ -1,0 +1,19 @@
+# Imagen de la aplicación web (Next.js, salida «standalone»). Contexto de construcción: la raíz del repositorio.
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json tsconfig.json ./
+COPY apps ./apps
+COPY packages ./packages
+RUN npm ci
+RUN npm run build -w @turnosala/web
+
+FROM node:22-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+COPY --from=build /app/apps/web/.next/standalone ./
+COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
+USER node
+EXPOSE 3000
+CMD ["node", "apps/web/server.js"]

@@ -4,5 +4,20 @@
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
-  "types": "./src/index.ts"
+  "types": "./src/index.ts",
+  "scripts": {
+    "dev": "next dev --webpack -p 3000",
+    "build": "next build --webpack",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@turnosala/core": "*",
+    "@turnosala/db": "*",
+    "better-auth": "^1.7.14",
+    "next": "^16.4.3",
+    "pg": "^8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
+  }
 }

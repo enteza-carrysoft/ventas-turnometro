@@ -4,8 +4,21 @@ import { bootstrapDatabase, ensureExtensions } from './bootstrap.js';
 import { migrate } from './migrate.js';
 
 /** Solo para pruebas locales/CI: contraseñas de desarrollo de los roles de la BD temporal. */
-const MIGRATOR_PW = 'migrator_test_only';
-const APP_PW = 'app_test_only';
+export const TEST_MIGRATOR_PW = 'migrator_test_only';
+export const TEST_APP_PW = 'app_test_only';
+const MIGRATOR_PW = TEST_MIGRATOR_PW;
+const APP_PW = TEST_APP_PW;
+
+/** Elimina una base de datos (forzando las conexiones abiertas). */
+export async function dropDatabase(base: string, name: string): Promise<void> {
+  const c = new pg.Client({ connectionString: base });
+  await c.connect();
+  try {
+    await c.query(`drop database if exists ${name} with (force)`);
+  } finally {
+    await c.end();
+  }
+}
 
 export interface TestDb {
   name: string;
@@ -18,7 +31,7 @@ export interface TestDb {
   drop(): Promise<void>;
 }
 
-function urlFor(base: string, user: string, password: string, db: string): string {
+export function urlFor(base: string, user: string, password: string, db: string): string {
   const u = new URL(base);
   u.username = user;
   u.password = password;
@@ -31,9 +44,10 @@ export function adminUrl(): string {
 }
 
 /** Crea una base de datos efímera con roles, extensiones y migraciones aplicadas. */
-export async function createTestDb(): Promise<TestDb> {
+export async function createTestDb(opts: { name?: string } = {}): Promise<TestDb> {
   const base = adminUrl();
-  const name = `t_${Date.now().toString(36)}_${randomBytes(3).toString('hex')}`;
+  const name = opts.name ?? `t_${Date.now().toString(36)}_${randomBytes(3).toString('hex')}`;
+  if (opts.name) await dropDatabase(base, opts.name); // nombre fijo: se parte siempre de una base limpia
   const boot = new pg.Client({ connectionString: base });
   await boot.connect();
   try {
@@ -61,13 +75,7 @@ export async function createTestDb(): Promise<TestDb> {
     app,
     async drop() {
       await Promise.all([app.end(), migrator.end(), adminOnDb.end()]);
-      const c = new pg.Client({ connectionString: base });
-      await c.connect();
-      try {
-        await c.query(`drop database if exists ${name} with (force)`);
-      } finally {
-        await c.end();
-      }
+      await dropDatabase(base, name);
     },
   };
 }

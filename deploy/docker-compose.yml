@@ -24,12 +24,14 @@ services:
   web:
     build:
       context: ..
-      dockerfile: deploy/Dockerfile
-      args:
-        APP: web
+      dockerfile: deploy/Dockerfile.web
     environment:
       APP_MODE: ${APP_MODE:-sandbox}
       PORT: "3000"
+      # Sin valores por defecto: la aplicación se niega a arrancar si faltan (ver deploy/.env.example).
+      DATABASE_URL: ${DATABASE_URL}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:

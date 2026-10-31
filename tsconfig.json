@@ -15,5 +15,6 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["apps/*/src", "packages/*/src", "tests", "scripts", "*.config.ts"]
+  "include": ["apps/*/src", "packages/*/src", "tests", "scripts", "*.config.ts"],
+  "exclude": ["apps/web", "node_modules"]
 }

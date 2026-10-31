@@ -6,5 +6,5 @@ export { consentInputSchema, insertConsent, type ConsentInput } from './consents
 export { approveProductFacts, type ApproveFactsInput } from './product-facts.js';
 export { check, type CheckOptions } from './compliance-check.js';
 export { loadContext, budgetProviderFor, type Db } from './compliance-context.js';
-export { createTestDb, type TestDb } from './testing.js'; // solo para pruebas
+export { createTestDb, dropDatabase, adminUrl, urlFor, TEST_APP_PW, TEST_MIGRATOR_PW, type TestDb } from './testing.js'; // solo para pruebas
 export { applyOpposition, type OppositionInput, type OppositionResult } from './opposition.js';
