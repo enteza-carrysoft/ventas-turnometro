@@ -21,8 +21,9 @@ los comerciales y los proveedores. Al terminar no se investiga ni se contacta a 
 
 | Dato | Estado |
 |---|---|
-| Repositorio `ventas-turnometro` | Sin código: solo `spec/`, `docs/`, `CLAUDE.md`, `README.md`, `PROMPT_INICIAL.md` y `analisis-con-otra-herramienta.pdf` (no citado en la spec; fuera de F0). Sin git, sin remoto de GitHub (31/10/2026) |
-| Herramientas del PC (31/10/2026) | Node 24.22.1 (el diseño fija Node 22 LTS: se fija `engines`/`.nvmrc` a 22 y las imágenes a `node:22`; se prueba en ambos), npm 11.19.1, git 2.56, Docker 29.9.2 instalado pero **el motor no responde** (error 500; Docker Desktop abierto, arrancando o parado) |
+| Repositorio `ventas-turnometro` | Sin código: solo `spec/`, `docs/`, `CLAUDE.md`, `README.md`, `PROMPT_INICIAL.md` y `analisis-con-otra-herramienta.pdf` (no citado en la spec; fuera de F0). **Git ya inicializado** en `main` con 1 commit (`e4d404c`) y remoto `origin` = `github.com/enteza-carrysoft/ventas-turnometro`; `CLAUDE.md` modificado y `.claude/` sin versionar; `.gitignore` ya existe (comprobado 31/10/2026) |
+| Herramientas del PC (31/10/2026) | Node **22.14.0** (coincide con el diseño: `engines`/`.nvmrc` = 22), npm **10.9.2**, git instalado, Docker 29.8.2 **con el motor respondiendo** (`docker ps` OK, sin contenedores). Corrige la versión anterior de esta tabla (Node 24 / motor caído) |
+| Antecedentes | Están en `C:\Users\usuario\Documents\Proyectos\turnometro` (hermano de este repo; el `../turnometro` del prompt es correcto, el hueco era mío). Leídos: `docs/TurnoSalaVentas.md`, `docs/RETOMAR.md` y `.claude/PRPs/PRP-017-api-plataforma-pruebas.md`. **PRP-017 sigue redactado para Odoo** (`external_id` = id de oportunidad de Odoo, `consent_ref` = `ts.consent` de Odoo, consumidor «botón de Odoo») y está pendiente de aprobación: hay que actualizarlo (consumidor = este sistema; `consent_ref` = id de `consents` de este sistema) y añadir `GET /api/platform/v1/orgs` para D-13. Es trabajo en el repo turnometro y de F3, no de F0. Precios: tres versiones distintas (ver D-02) |
 | Odoo | **No se usa** (ADR-004, 31/10/2026): CRM y agenda son propios |
 | Calendarios de los comerciales | Por comprobar en F0.8 (Google/Outlook, ICS de ocupado, videollamada) |
 | PRP-017 (API de plataforma) en turnometro | Documento pendiente de aprobación; no bloquea F0 |
@@ -65,7 +66,7 @@ Decisiones de diseño de F0 (estaban sin fijar):
 
 | # | Tarea | Verificación |
 |---|---|---|
-| F0.1 | `git init`, `.gitignore` (`.env*`, excepto `.env.example`), monorepo, TS estricto, ESLint, Vitest, workflow de CI | `npm run ci` local (typecheck + lint + test) en verde con un test trivial por paquete; el workflow se valida con `actionlint` y su primera ejecución real ocurre cuando el promotor haga `git push` |
+| F0.1 | (git y `.gitignore` ya existen) commit inicial de `CLAUDE.md` y `.claude/` si el promotor lo aprueba, monorepo, TS estricto, ESLint, Vitest, workflow de CI | `npm run ci` local (typecheck + lint + test) en verde con un test trivial por paquete; el workflow se valida con `actionlint` y su primera ejecución real ocurre cuando el promotor haga `git push` |
 | F0.2 | Docker Compose + `.env.example` (solo nombres). Sin `caddy` en local; en el CPD no se publica 80/443 propios (ver D-01) | `docker compose up` levanta postgres y web con página «OK» (requiere el motor de Docker en marcha) |
 | F0.3 | Esquema y migraciones de F0 + triggers (incl. `TRUNCATE`) y roles `migrator`/`app` | T-13 (SQL directo y API), T-19 como `app`, como `migrator` y con `TRUNCATE` |
 | F0.4 | `spec/research/fuentes.md`: por fuente, licencia, URL de condiciones, formato, campos almacenables, coste, fecha | Revisado por el promotor |
@@ -74,7 +75,7 @@ Decisiones de diseño de F0 (estaban sin fijar):
 | F0.7 | Auth + roles + panel mínimo con `kill_switch` | e2e: `marketing` no puede activar el kill switch; `admin` sí y queda en `audit_log` |
 | F0.8 | `spec/research/agenda-y-clientes.md`: qué calendario usa cada comercial y si publica ICS de ocupado (Google: «dirección secreta en formato iCal»; Outlook: «publicar calendario»), herramienta de videollamada (D-05) y cómo obtener la lista de clientes actuales de TurnoSala (D-13) | Revisado por el promotor |
 | F0.9 | `spec/research/proveedores.md` (Twilio, cartas, Robinson, Resend, Claude). Aquí se **verifica con la skill `claude-api`** lo que `design.md` §4.1 da por supuesto (IDs de modelo, `web_search_20260209`, `fallbacks`, parámetros rechazados, precios): hasta entonces no se programa contra ello | Revisado por el promotor |
-| F0.10 | `product_facts` v1 en `draft` con discrepancias señaladas | El promotor la aprueba (D-02) |
+| F0.10 | `product_facts` v1 en `draft` con discrepancias señaladas. Fuentes: turnosala.com (WebFetch) y, si el promotor los aporta, `TurnoSalaVentas.md`/`RETOMAR.md`; no se inventa nada que no aparezca | El promotor la aprueba (D-02) |
 
 Orden: F0.1 → F0.2 → F0.3 → F0.5 → F0.6 → F0.7. En paralelo: F0.4, F0.8, F0.9, F0.10.
 

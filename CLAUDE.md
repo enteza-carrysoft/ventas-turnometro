@@ -41,3 +41,12 @@
 `campaign` · `send_batch` · `contact_attempt` · `content_item` · `call` · `demo` · `deal` (oportunidad) ·
 `deal_stage` · `task` · `note` · `availability_rule` · `busy_block`.
 Sin Odoo (ADR-004): el CRM y la agenda de demos son parte de este sistema.
+
+## SaaS Factory (solo `.claude/`)
+Se aplicó únicamente la carpeta `.claude/` de SaaS Factory (comandos, prompts, agentes, skills, PRPs).
+- **Prevalece este CLAUDE.md y `spec/`.** Donde la fábrica contradiga la constitución, la puerta de cumplimiento o el
+  stack (Next.js/Supabase/Vercel de la fábrica vs. Docker Compose y D-01), gana la spec.
+- Útiles tal cual: `/primer`, `codebase-analyst`, `validacion-calidad`, `gestor-documentacion`, `prompts/bucle-agentico-*`
+  y el Auto-Blindaje (documentar cada error en la fase o en este archivo para que no se repita).
+- No aplicables al stack actual: `supabase-admin`, `vercel-deployer`, `/add-login`, `/landing`, `/new-app`,
+  `agent-builder-vercel`. No usarlos sin decidirlo antes en `spec/decisions.md`.
