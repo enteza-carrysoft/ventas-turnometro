@@ -9,3 +9,7 @@ export { loadContext, budgetProviderFor, type Db } from './compliance-context.js
 export { createTestDb, dropDatabase, adminUrl, urlFor, TEST_APP_PW, TEST_MIGRATOR_PW, type TestDb } from './testing.js'; // solo para pruebas
 export { applyOpposition, type OppositionInput, type OppositionResult } from './opposition.js';
 export { seedProductFactsDraft, PRODUCT_FACTS_V1_PATH } from './seed-product-facts.js';
+export { ingestCandidate, type IngestCandidate, type IngestResult } from './ingest.js';
+export { importTurnosalaCustomers, type CustomerImportResult } from './customers.js';
+export { parseCsv } from './csv.js';
+export { annotateVerification, type VerificationResults } from './verification.js';

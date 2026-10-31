@@ -19,7 +19,8 @@
     "db:setup": "tsx scripts/db-setup.ts",
     "user:create": "tsx scripts/create-user.ts",
     "seed:product-facts": "tsx scripts/seed-product-facts.ts",
-    "approve:product-facts": "tsx scripts/approve-product-facts.ts"
+    "approve:product-facts": "tsx scripts/approve-product-facts.ts",
+    "customers:import": "tsx scripts/import-customers.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

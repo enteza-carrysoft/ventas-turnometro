@@ -146,6 +146,26 @@ aprobación expresa del gasto (P6.2).
   pero en la API directa Opus 5.5 rechaza `budget_tokens`; por eso **`effort` está guardado y no se envía**; (4) que un esquema de
   `z.toJSONSchema` cumpla el modo estricto; (5) que `usage.cost` («créditos») equivalga a USD: `usd_to_eur = 1` sobrestima el gasto
   hasta tener un cambio real; (6) el camino de la región UE (`eu.openrouter.ai`), que depende de D-16; (7) los límites de peticiones.
+- **F1.8 completada (31/10/2026)** — `packages/core/src/scoring`: función pura con el modelo v1 (pesos 25/20/15/15/10/10/5 y criterios del §4 de
+  los documentos de ventas). Por criterio cuenta **solo la señal más fuerte** y cada señal una vez; las desconocidas se ignoran y se devuelven.
+  Redondeo al entero más cercano con .5 hacia arriba; umbrales comprobados en 0/1/49/50/51/74/75/76/100. El razonamiento son ≤ 2 líneas con
+  hasta 3 URL. 25 tests, 5 mutaciones detectadas. **El mapa señal → criterio es mío** (propuesta razonable, no un dato del promotor): se
+  guardará en `segments.definition` al aprobar cada segmento (F1.2) y se recalibrará con resultados reales (REQ-SCO-02, F7).
+- **F1.7 completada (31/10/2026)** — migración 0007 (`evidences`, `prospect_sources`, `turnosala_customers`, `contact_points.invalid_reason`);
+  `core/normalize` (teléfono E.164 con `libphonenumber-js`, dominio registrable con `tldts`, nombre, dirección, municipio, forma jurídica y
+  similitud de trigramas **idéntica a `pg_trgm`**, comprobada contra la propia BD), `core/dedupe` (decisión pura), `core/verify` (web 2xx/3xx
+  y MX con puertos) y, en `db`, `ingestCandidate`, `importTurnosalaCustomers` y `annotateVerification`. 438 tests en total; 9 mutaciones detectadas.
+- **F1.7 — Decisiones mías (revisables):** (1) la ingesta se **serializa con un cerrojo global** de transacción: evita duplicados bajo concurrencia
+  (probado con 5 ingestas simultáneas) a costa de procesar de una en una; suficiente para cientos de fichas, revisar si F1.4 usa muchos
+  workers; (2) para identificar a una empresa solo valen teléfonos **fijos o móviles válidos** (un 902 lo comparten cadenas enteras);
+  (3) una red social, un directorio o un acortador **no es el dominio de la empresa** (`domain = null`), y plataformas como `wixsite.com`
+  conservan el subdominio; (4) el umbral de nombre es 0,8 dentro del mismo municipio y 0,9 contra clientes; (5) un cliente o una oposición
+  **bloquean** la ficha con motivo y dejan constancia en `audit_log`; si la ficha ya existía, es esa la que pasa a `blocked`.
+- **F1.7 — Limitaciones conocidas:** si una fuente añade la ciudad al nombre («… sol sevilla») la similitud (≈ 0,74) queda por debajo del
+  umbral y no se fusiona solo por nombre (lo cazan el dominio, el teléfono o el revisor); dos empresas en subdominios del mismo dominio
+  registrable se fusionan; el nombre muy parecido a un cliente bloquea aunque sea otra empresa (queda visible con motivo para revisión).
+  Los adaptadores reales de HTTP (con `robots.txt` y 1 req/s) y de DNS para `checkWebsite`/`checkEmailMx` se escriben con el rastreador (F1.6);
+  la clasificación de emails genéricos/personales (REQ-ENR-03) también va en F1.6.
 - **F1.1 — Rutas de Haiku** (`inbound.classify`, `voice.dialog`) están sembradas con `anthropic`, que ni está habilitado ni
   implementado: devuelven `provider_disabled` hasta F5–F6, por diseño.
 - **F1.1 — Coste desconocido:** si ni el proveedor ni la tabla de precios dan coste, se registra 0 con `costSource: 'unknown'`. Es el
