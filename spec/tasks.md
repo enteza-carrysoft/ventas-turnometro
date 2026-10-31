@@ -96,6 +96,7 @@ una prueba.
 | F4.5 | Copiloto de llamadas humanas (guion + tarea «Llamar» en el CRM) y planificador de visitas por municipio | REQ-COP-01/02 |
 | F4.6 | Estudio de contenido (anuncios, posts, landings por provincia) | REQ-CAM-01 |
 | F4.7 | Seguimiento de QR y cartas devueltas; informe semanal | REQ-LET-02, REQ-OBS-02 |
+| F4.8 | **(D-18)** Primer contacto por **email con QR** como alternativa a la carta: misma landing `/c/<token>`, mismo seguimiento de escaneos, `List-Unsubscribe` y aviso de privacidad. En `sandbox` desde el inicio; **bloqueada en `production` hasta el informe escrito del asesor** (variante neutra o completa según lo que avale) | REQ-EML-01, REQ-LET-02, D-18 |
 
 **Criterio:** primer lote real de **50 cartas** en la provincia de Sevilla aprobado y enviado; escaneos, solicitudes
 y demos medidos. **Puerta G4:** `postal_b2b_approved` (y, si procede, `b2b_human_calls_approved`) activados por el
