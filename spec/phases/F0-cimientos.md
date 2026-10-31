@@ -74,7 +74,7 @@ Decisiones de diseño de F0 (estaban sin fijar):
 | F0.6 | `ContactService` esqueleto + T-ARQ | T-ARQ (con fixtures de violación que debe detectar), T-20, T-21 |
 | F0.7 | Auth + roles + panel mínimo con `kill_switch` | e2e: `marketing` no puede activar el kill switch; `admin` sí y queda en `audit_log` |
 | F0.8 | `spec/research/agenda-y-clientes.md`: qué calendario usa cada comercial y si publica ICS de ocupado (Google: «dirección secreta en formato iCal»; Outlook: «publicar calendario»), herramienta de videollamada (D-05) y cómo obtener la lista de clientes actuales de TurnoSala (D-13) | Revisado por el promotor |
-| F0.9 | `spec/research/proveedores.md` (Twilio, cartas, Robinson, Resend, Claude). Aquí se **verifica con la skill `claude-api`** lo que `design.md` §4.1 da por supuesto (IDs de modelo, `web_search_20260209`, `fallbacks`, parámetros rechazados, precios): hasta entonces no se programa contra ello | Revisado por el promotor |
+| F0.9 | `spec/research/proveedores.md` (Twilio, cartas, Robinson, Resend, Claude y OpenRouter, ADR-005). Aquí se **verifica con la skill `claude-api`** lo que `design.md` §4.1 da por supuesto (IDs de modelo, `web_search_20260209`, `fallbacks`, parámetros rechazados, precios): hasta entonces no se programa contra ello | Revisado por el promotor |
 | F0.10 | `product_facts` v1 en `draft` con discrepancias señaladas. Fuentes: turnosala.com (WebFetch) y, si el promotor los aporta, `TurnoSalaVentas.md`/`RETOMAR.md`; no se inventa nada que no aparezca | El promotor la aprueba (D-02) |
 
 Orden: F0.1 → F0.2 → F0.3 → F0.5 → F0.6 → F0.7. En paralelo: F0.4, F0.8, F0.9, F0.10.
@@ -120,4 +120,17 @@ dentro de `evaluate`). Tests de integración de triggers contra Postgres efímer
 - **F0.7** — No se instala Tailwind ni shadcn/ui todavía (YAGNI; el panel de F0 es una página): se añaden en F1 con las primeras pantallas reales. 2FA TOTP para `admin` sigue diferido a F2 (antes de exponer el panel a Internet), como decía la spec.
 - **F0.7** — `deploy/Dockerfile.web` (standalone) verificado construyendo la imagen y recorriendo login, panel, 403 por origen ajeno y activar/desactivar el kill switch contra el Postgres del compose. `deploy/Dockerfile` (genérico) queda solo para `worker`/`voice`, que aún no tienen código y están en el perfil `later`.
 - **F0.7** — El job de e2e se añadió a `.github/workflows/ci.yml` (instala Chromium); como el resto del workflow, no se ha podido validar con `actionlint` y su primera ejecución real será tras el `git push`.
+- **F0.9 / ADR-005 (31/10/2026)** — A petición del promotor, el SDD admite **OpenRouter además de Anthropic directo** como
+  proveedor de LLM: constitución 1.2, ADR-005, REQ-LLM-01…05, `design.md` §4.1 (pasarela con capacidades por proveedor),
+  `CLAUDE.md` y tareas F0.9/F1.1/F1.10. No se escribió código: `packages/ai` se construye en F1.1. Decisiones abiertas nuevas:
+  D-15 (qué rutas probar) y D-16 (contrato de encargo y región de OpenRouter).
+- **F0.9** — Hallazgo bloqueante para F4/F5 (D-14): desde el 17/10/2026 las llamadas comerciales salientes en España solo pueden
+  usar números del rango `+34 400`, que **no reciben llamadas** (Resolución de 14/04/2026, BOE 93). La voz necesita dos números.
+  Pendiente de pregunta al asesor: si entran en su ámbito las llamadas B2B y las de IA con consentimiento.
+- **F0.9** — Corrección de un fallo propio: `holidays.ts` carecía de los traslados de 2026 (2-nov y 7-dic) porque no se pudo
+  leer el BOJA el 31/10; con los decretos ya leídos (101/2025 y 84/2026) quedan cargados 2026 y 2027 con test contra las fechas
+  oficiales. Ya no hay «festivos sin verificar» en la puerta (salvo locales y otras comunidades).
+- **F0.4 / F0.9** — Informes escritos: `spec/research/fuentes.md` y `spec/research/proveedores.md` (borradores para revisión).
+  Siguen **abiertos**: licencia de REGCESS (falta una muestra), latencia de ConversationRelay y precio de ConversationRelay
+  (necesitan cuenta de Twilio y servidor), límites de OpenRouter para cuentas de pago y recepción de correo de Resend.
 - **F0.3** — Pruebas de BD: usan `TEST_DATABASE_URL` o, por defecto, el Postgres del compose en `127.0.0.1:5433`; sin Postgres levantado fallan (no se saltan en silencio).

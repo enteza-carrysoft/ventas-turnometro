@@ -23,7 +23,7 @@ algo cambió · nota en «Aprendizajes» de la fase si hubo una decisión fuera 
 | F0.6 | `packages/contact` esqueleto + T-ARQ (sin conectores reales todavía) | REQ-CMP-01 CA3 |
 | F0.7 | Auth (Better Auth), roles en servidor, panel vacío con `kill_switch` y modo visibles | REQ-PAN-01, P5 |
 | F0.8 | Agenda y clientes: calendarios de los comerciales (Google/Outlook: ¿publican ICS de ocupado?), videollamada (D-05) y fuente de clientes actuales de TurnoSala (D-13) → `spec/research/agenda-y-clientes.md` | REQ-AGE-03, REQ-VER-02, D-05, D-13 |
-| F0.9 | Notas de proveedores (con fecha): Twilio ConversationRelay es-ES y latencia desde el servidor; proveedor de cartas; servicio Lista Robinson; Resend subdominio; Claude (modelos, web search, precios) con la skill `claude-api` → `spec/research/proveedores.md` | D-06, D-07, D-08 |
+| F0.9 | Notas de proveedores (con fecha): Twilio ConversationRelay es-ES y latencia desde el servidor; proveedor de cartas; servicio Lista Robinson; Resend subdominio; Claude (modelos, web search, precios) con la skill `claude-api`; OpenRouter (ids de modelo, parámetros, privacidad, comisiones) con su documentación oficial → `spec/research/proveedores.md` | D-06, D-07, D-08, D-14, D-15, D-16 |
 | F0.10 | `product_facts` v1 de TurnoSala desde turnosala.com y la app, con las discrepancias de precio señaladas (D-02) | REQ-MKT-01 |
 
 **Puerta G0:** puerta de cumplimiento con T-01…T-22 y T-ARQ en verde · notas de F0.4, F0.8 y F0.9 revisadas ·
@@ -33,7 +33,7 @@ D-01, D-02 y D-03 resueltas.
 
 | Tarea | Detalle | Cumple |
 |---|---|---|
-| F1.1 | `packages/ai`: cliente Claude con rutas de modelo, registro de coste, presupuesto previo, caché de prompts, manejo de `refusal`/`max_tokens` | REQ-OBS-01 |
+| F1.1 | `packages/ai`: **pasarela de LLM** con adaptadores `anthropic` (skill `claude-api`) y `openrouter` (documentación oficial), `llm_routes` y `llm_enabled_providers` sembrados, capacidades declaradas por proveedor y negativa a degradar en silencio, registro de coste con modelo servido, presupuesto previo, caché de prompts, normalización de rechazo/truncado, test **T-ARQ-LLM** y pruebas de contrato con dobles | REQ-LLM-01…04, REQ-OBS-01 |
 | F1.2 | Análisis de mercado y segmentos ICP (agente con herramientas web) + vista de aprobación | REQ-MKT-02 |
 | F1.3 | Dimensionamiento por territorio (INE + registros) | REQ-MKT-03 |
 | F1.4 | `research_jobs`/`research_tasks` en pg-boss, reanudables, con panel de avance | REQ-RES-01/03 |
@@ -42,7 +42,7 @@ D-01, D-02 y D-03 resueltas.
 | F1.7 | Normalización, verificación y deduplicación (contra fichas, exclusiones y `turnosala_customers`) | REQ-VER-01/02/03 |
 | F1.8 | Puntuación pura versionada | REQ-SCO-01 |
 | F1.9 | Ficha y cola de revisión con atajos y muestreo; exportación CSV | REQ-REV-01/02/03 |
-| F1.10 | Conjunto dorado de 50 webs anotadas y `npm run eval:extract` | design §11 |
+| F1.10 | Conjunto dorado de 50 webs anotadas y `npm run eval:extract` (con `--route` y `--provider` para comparar proveedores) | design §11, REQ-LLM-05 |
 
 **Criterio:** lote piloto de **200 empresas de la provincia de Sevilla** (2–3 verticales A) investigado, deduplicado
 y revisado en staging; cada ficha con evidencias; **cero contactos**. Precisión de campos ≥ 90 % en el conjunto dorado;

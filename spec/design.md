@@ -17,11 +17,11 @@
                          │ web (Next.js 16):                                                      │                   │
                          │   panel: fichas · revisión · campañas · CRM (tablero, tareas, línea de tiempo) · agenda    │
                          │   público: /demo/<sector> · /demo/reservar · /c/<token> · /baja · /cita/<token> · ICS      │
-                         │ voice (Fastify + WebSocket): Twilio ConversationRelay ⇄ Claude (huecos y reserva directos) │
+                         │ voice (Fastify + WebSocket): Twilio ConversationRelay ⇄ LLM (huecos y reserva directos) │
                          │ PostgreSQL 16 (+ pgvector, btree_gist)                                 │                   │
                          └────────────────────────────────────────────────────────────────────────┼───────────────────┘
                                    ▲ ICS de ocupado (solo lectura)                                 ▼
-                         Google Calendar / Outlook de los comerciales          Twilio · Resend · cartas · Anthropic · TurnoSala
+                         Google Calendar / Outlook de los comerciales          Twilio · Resend · cartas · LLM · TurnoSala
 ```
 
 Principio: **un solo sistema investiga, decide, contacta y gestiona la venta.** Ningún componente salvo
@@ -39,7 +39,7 @@ Principio: **un solo sistema investiga, decide, contacta y gestiona la venta.** 
 | ORM / migraciones | Drizzle ORM + drizzle-kit (SQL revisable) | Tipos desde el esquema; migraciones legibles |
 | Colas | `pg-boss` | Trabajos en Postgres: sin Redis, reintentos, cron, singleton |
 | Auth | Better Auth (email + contraseña, 2FA TOTP para `admin`) | Autoalojado, roles propios |
-| LLM | API de Claude, SDK `@anthropic-ai/sdk` | Herramientas web de servidor, salidas estructuradas, batch, caché |
+| LLM | Pasarela propia (`packages/ai`) con dos proveedores: API de Claude (`@anthropic-ai/sdk`) y OpenRouter (HTTP, API compatible con OpenAI) | Herramientas web de servidor, salidas estructuradas, batch y caché con Anthropic; modelos alternativos y fallback con OpenRouter (ADR-005) |
 | Rastreo | `undici` + `robots-parser` + `cheerio` (HTML→texto) | Control de robots y ritmo; sin navegador headless en el MVP |
 | Teléfonos | `libphonenumber-js` | E.164 |
 | Voz | Twilio Programmable Voice + ConversationRelay (STT/TTS es-ES) | La pasarela solo intercambia texto con el LLM |
@@ -63,7 +63,7 @@ apps/
 packages/
   core/                   # PURO, sin E/S: normalize/, dedupe/, scoring/, compliance/, claims/, slots/
   db/                     # esquema Drizzle, migraciones, repositorios, triggers de solo inserción
-  ai/                     # cliente Claude, rutas de modelo, prompts versionados, esquemas Zod de salida
+  ai/                     # pasarela de LLM (adaptadores anthropic y openrouter), rutas de modelo, prompts versionados, esquemas Zod de salida
   connectors/             # sources/* (adaptadores), turnosala/, twilio/, resend/, letters/, robinson/, ical/
   contact/                # ContactService: check → ejecutar → registrar (único usuario de connectors de salida)
   content/                # generadores (carta, guion, landing, anuncio) + verificador de afirmaciones
@@ -98,26 +98,69 @@ calcula puntuaciones: extrae, resume y redacta. Cada etapa es una cola idempoten
 | 16 | `trials.sync` | outbox → API de plataforma de TurnoSala | No | REQ-TRI-01/02 |
 | 17 | `report.weekly` | métricas → informe | Sí | REQ-OBS-02 |
 
-### 4.1 Rutas de modelo (configurables por variable de entorno)
+### 4.1 Pasarela de LLM y rutas de modelo (ADR-005, REQ-LLM-01…05)
 
-Verificar con la skill `claude-api` al implementar: los modelos, herramientas y precios cambian.
+Todo acceso a un modelo pasa por **una pasarela en `packages/ai`**. El resto del sistema pide una **ruta**
+(`enrich.extract`…), nunca un modelo ni un proveedor. Proveedores admitidos: `anthropic` (API directa, SDK oficial,
+verificada con la skill `claude-api`) y `openrouter` (API compatible con OpenAI, verificada con su documentación oficial).
+Cada proveedor es un adaptador con la misma interfaz y declara sus **capacidades**; una ruta que necesita una capacidad
+que su proveedor no tiene **se niega a ejecutarse** (REQ-LLM-02 CA1).
 
-| Ruta | Modelo por defecto | Esfuerzo | Notas |
+```ts
+// packages/ai (esbozo; se concreta en F1.1)
+type RouteId = 'market.analyze' | 'enrich.extract' | 'content.generate' | 'discovery'
+             | 'inbound.classify' | 'voice.dialog' | 'report.weekly';
+interface LlmResult<T> {
+  status: 'ok' | 'refused' | 'truncated' | 'error';      // normalizado: nunca se lee contenido si no es 'ok'
+  data?: T;                                              // ya validado con Zod (P5.4)
+  citations: { url: string; title?: string }[];
+  usage: { input: number; output: number; cachedInput: number; costEur: number; costSource: 'provider' | 'table' };
+  provider: 'anthropic' | 'openrouter'; requestedModel: string; servedModel: string; fallbackUsed: boolean;
+}
+// settings.llm_routes (jsonb, no secreto, editable por admin con audit_log)
+// { "enrich.extract": { provider: "anthropic", models: { anthropic: "claude-opus-5-5", openrouter: "anthropic/claude-opus-5.5[1m]" },
+//   effort: "medium", allowedModels: [...], zdr: false, capabilities: ["structured_output", "batch"] } }
+```
+
+**Capacidades por proveedor** (comprobadas el 31/10/2026; detalle y fuentes en `spec/research/proveedores.md`):
+
+| Capacidad | `anthropic` (directo) | `openrouter` | Garantía en nuestro código |
 |---|---|---|---|
-| `market.analyze`, `report.weekly` | `claude-opus-5-5` | `high` | Agente con `web_search_20260209` y `web_fetch_20260209`; streaming |
-| `enrich.extract`, `content.generate` | `claude-opus-5-5` | `medium` | Salida estructurada (`client.messages.parse` + Zod); **Batch API** (−50 %) para lotes no urgentes |
-| `discovery` (fuente web) | `claude-opus-5-5` | `low` | `web_search` con `user_location` España y `blocked_domains` de fuentes vetadas |
-| `inbound.classify`, extracción masiva barata | `claude-haiku-5-5` | `low` | Clasificación corta |
-| `voice.dialog` | `claude-haiku-5-5` | `low` | Latencia; streaming; herramientas estrictas (`strict: true`) |
+| Salida estructurada | `client.messages.parse` / `output_config.format` | `response_format: json_schema`; soporte **por endpoint** | `provider.require_parameters: true`; **siempre** validar con Zod |
+| Búsqueda web | `web_search_20260209` (10 $/1.000 búsquedas; `blocked_domains`) | plugin `web`, sufijo `:online` o herramienta `openrouter:web_search`; motor nativo o Exa; filtro de dominios **según motor** | veto de dominios (P2.6) **también en código** sobre las URL devueltas |
+| Lectura de páginas | `web_fetch_20260209` (sin coste extra) | no documentado en lo leído | rastreador propio (§4, etapas 4–5): no depende del proveedor |
+| Caché de prompt | `cache_control` | `cache_control` en modelos Anthropic; automática en otros; enrutado pegajoso | verificar `cached_tokens` (métrica de aciertos) |
+| Batch (−50 %) | sí | **no** (en lo leído) | rutas por lotes solo con `anthropic` |
+| Fallback | `fallbacks: "default"` en el servidor (cabecera beta) | `models: [...]` + `provider.allow_fallbacks` | lista cerrada `allowedModels`; se registra el **modelo servido** |
+| Rechazo / truncado | `stop_reason` `refusal`/`max_tokens` + `stop_details` | `finish_reason` `content_filter`/`length`/`error` | la pasarela lo normaliza; no se lee contenido si no es `ok` |
+| Privacidad | contrato con Anthropic | `provider.data_collection: "deny"`, `zdr`, endpoint UE `eu.openrouter.ai`; DPA en plan Business | REQ-LLM-03 |
+| Parámetros no soportados | error 400 | **se ignoran en silencio** | `require_parameters: true`; la pasarela no envía `temperature`/`top_p` |
+| Herramientas / voz | `strict: true`; sin `tool_choice` forzado en Opus 5.5 | `tools` + `tool_choice` | `voice.dialog` fija a `anthropic` hasta medir latencia (F5) |
 
-Precios de referencia (caché de la skill, 06/10/2026, por millón de tokens): Opus 5.5 4 $ entrada / 20 $ salida;
-Haiku 5.5 0,10 $ / 0,50 $. Las búsquedas web se facturan aparte: consultar precio vigente. Reglas de uso:
+**Rutas** (proveedor por defecto: `anthropic`; la columna OpenRouter es lo que se **probaría**, D-15):
+
+| Ruta | Modelo `anthropic` | Esfuerzo | Modelo `openrouter` (a probar) | Notas |
+|---|---|---|---|---|
+| `market.analyze`, `report.weekly` | `claude-opus-5-5` | `high` | `anthropic/claude-opus-5.5[1m]` | Agente con búsqueda y lectura web; streaming |
+| `enrich.extract`, `content.generate` | `claude-opus-5-5` | `medium` | `anthropic/claude-opus-5.5[1m]` | Salida estructurada + Zod; **Batch solo con `anthropic`** |
+| `discovery` (fuente web) | `claude-opus-5-5` | `low` | `anthropic/claude-opus-5.5[1m]` | `user_location` España; veto de dominios en código además |
+| `inbound.classify` | `claude-haiku-5-5` | `low` | **sin Haiku 5.5 en su lista**: elegir y medir | Clasificación corta |
+| `voice.dialog` | `claude-haiku-5-5` | `low` | no hasta medir latencia y confirmar modelo | Latencia; streaming; herramientas estrictas |
+
+Precios de referencia (verificados el 31/10/2026, por millón de tokens): Opus 5.5 4 $ entrada / 20 $ salida (lectura de
+caché 0,20 $); Haiku 5.5 0,10 $ / 0,50 $ **hasta 100.000 tokens de prompt** (0,50 $ / 2,50 $ por encima); Batch −50 %;
+búsqueda web de Claude 10 $ por 1.000. OpenRouter no añade sobreprecio a la inferencia (comisión al comprar créditos,
+porcentaje sin confirmar) y devuelve el coste real en `usage.cost`. Reglas de uso:
 
 - Prompts de sistema y `product_facts` estables al principio con `cache_control` (caché de prefijo); nada variable antes.
-- Comprobar `stop_reason` (`refusal`, `max_tokens`) antes de leer el contenido; activar `fallbacks: "default"` en Opus.
-- Sin `temperature`/`top_p` (rechazados por la API actual) ni `budget_tokens`; pensamiento adaptativo.
-- Cada llamada registra tokens y coste estimado en `usage_costs` (REQ-OBS-01) y respeta el presupuesto antes de lanzarse.
+- Comprobar el motivo de parada normalizado antes de leer el contenido; con `anthropic`, activar `fallbacks: "default"` en Opus.
+- La pasarela **no envía** `temperature`/`top_p`/`budget_tokens` (rechazados por Opus 5.5 e ignorados por OpenRouter);
+  esfuerzo y razonamiento se declaran por ruta y se validan en las pruebas de contrato.
+- Cada llamada registra proveedor, modelo pedido y servido, tokens, coste y fallback en `usage_costs` (REQ-LLM-04) y
+  respeta el presupuesto antes de lanzarse (REQ-OBS-01).
 - Contenido web en bloques delimitados (`<documento fuente="…">`) con instrucción de tratarlo como dato.
+- Pruebas: contrato por proveedor con dobles en CI (etiqueta `contract` para las reales), **T-ARQ-LLM** (ningún SDK ni
+  URL de LLM fuera de `packages/ai`) y evaluación comparativa por ruta con el conjunto dorado (REQ-LLM-05).
 
 ### 4.2 Extracción con evidencia (anti-alucinación)
 
@@ -264,7 +307,7 @@ cada noche desde la API de plataforma o por CSV.
 | Unidad | `packages/core` completo (normalización, dedupe, puntuación, puerta T-01…T-22, motor de huecos con cambios de hora) | Vitest |
 | Integración | Repositorios, triggers, restricción anti-doble-reserva con reservas concurrentes, colas, conectores con dobles (Twilio, Resend, TurnoSala simulados) | Vitest + Postgres en Docker |
 | Contrato | Cliente de TurnoSala contra su staging; lectura de ICS de Google y Outlook reales | Vitest (etiqueta `contract`) |
-| Arquitectura | T-ARQ (imports y llamadas permitidas) | Vitest + análisis de imports |
+| Arquitectura | T-ARQ (imports y llamadas de contacto) y T-ARQ-LLM (ningún SDK ni URL de LLM fuera de `packages/ai`) | Vitest + análisis de imports |
 | Calidad de extracción | Conjunto dorado de 50 webs reales anotadas a mano: precisión de campos y tasa de rechazo literal | script `npm run eval:extract` |
 | Voz | Escenarios YAML por texto (REQ-VOZ-05) | Vitest |
 | E2E | Flujo de la fase en el panel y landings | Playwright |

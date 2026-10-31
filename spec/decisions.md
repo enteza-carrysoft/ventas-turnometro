@@ -1,5 +1,45 @@
 # Decisiones
 
+## ADR-005 (vigente, 31/10/2026): proveedores de LLM intercambiables (Anthropic directo y OpenRouter)
+
+**Contexto.** La spec fijaba la API de Claude con el SDK de Anthropic como único acceso a modelos. El promotor quiere
+poder usar también la API de OpenRouter.
+
+**Decisión.** Todo acceso a modelos pasa por una **pasarela única** (`packages/ai`) con dos proveedores admitidos:
+`anthropic` (API directa, SDK oficial) y `openrouter` (API compatible con OpenAI: Chat Completions y Responses, base
+`https://openrouter.ai/api/v1`; en la UE `https://eu.openrouter.ai`). Cada **ruta** (`market.analyze`, `enrich.extract`,
+`voice.dialog`…) elige proveedor y modelo **por configuración** (`settings.llm_routes`), no por código. Por defecto
+todas las rutas usan `anthropic`; OpenRouter es opt-in por ruta y exige que un `admin` lo habilite en
+`settings.llm_enabled_providers` (auditado). Ver `design.md` §4.1 y REQ-LLM-01…05.
+
+**Por qué.** Poder comparar y cambiar de modelo sin reescribir; abaratar rutas de poca exigencia; tener un segundo
+proveedor si uno falla; acceder a modelos que Anthropic no ofrece. El LLM sigue sin decidir permisos ni puntuaciones.
+
+**Hechos comprobados en la documentación de OpenRouter (31/10/2026)** — detalle en `spec/research/proveedores.md`:
+- Los identificadores **no coinciden**: Opus 5.5 es `anthropic/claude-opus-5.5[1m]` (con punto y sufijo `[1m]`); en su
+  lista **no aparecen** Haiku 5.5 ni Sonnet 5.5. Cada ruta guarda un id por proveedor.
+- Un parámetro que el modelo no soporta **se ignora en silencio** salvo que se envíe `provider.require_parameters: true`.
+- La salida estructurada se comprueba **por endpoint**; el modo estricto lo cumple cada proveedor a su manera.
+- Sin Batch API en lo leído; filtros de dominio de la búsqueda web **no uniformes** entre motores; caché de prompt
+  de Anthropic admitida con `cache_control` y enrutado «pegajoso».
+- Privacidad: no entrena con las entradas ni las guarda por defecto (sí metadatos); controles por petición
+  `provider.data_collection: "deny"` y `provider.zdr: true`; endpoint de la UE (`eu.openrouter.ai`) para prompts y respuestas;
+  **contrato de encargo (DPA con cláusulas tipo) en su plan Business**; su política no define roles ni publica lista de
+  subencargados; cuenta y facturación pueden tratarse en EE. UU.
+- Precio: sin sobreprecio de inferencia; comisión al comprar créditos (porcentaje **no confirmado**); BYOK con 5 % por
+  encima de 25.000 USD/mes.
+
+**Costes aceptados.** Una capa de abstracción propia que declare las **capacidades** de cada proveedor y se niegue a
+degradar en silencio (REQ-LLM-02); un segundo conjunto de pruebas de contrato; los trabajos por lotes (Batch API, −50 %)
+solo con `anthropic`.
+
+**Alternativas descartadas.** (a) Usar el SDK de OpenAI como interfaz común: acopla el diseño al formato OpenAI y pierde
+funciones propias de Anthropic (Batch, `fallbacks` del servidor, `web_search_20260209`). (b) Un único proveedor: es lo que
+había y lo que se quiere flexibilizar.
+
+**Lo que no cambia.** El LLM extrae y redacta, no decide; las entradas y salidas del modelo son datos no fiables
+(Zod); el presupuesto diario (D-03) y el registro de coste por proveedor.
+
 ## ADR-004 (vigente, 31/10/2026): sistema web completo, sin Odoo
 
 **Contexto.** ADR-003 dejaba en Odoo 19 Enterprise el CRM, las actividades y las demos (Citas). El promotor no dispone
@@ -49,6 +89,9 @@ Cada decisión indica la fase que bloquea. El agente no avanza esa fase sin resp
 | D-11 | Verticales del piloto en Sevilla | F1 | Policlínicas y clínicas dentales multiconsulta, ópticas con gabinete, fisioterapia; talleres y concesionarios en una segunda tanda |
 | D-12 | Sector público (ayuntamientos): ¿se trabaja en este motor o por canal institucional aparte? | F4 | Canal aparte: licitaciones + Diputación/partners; el motor solo vigila señales |
 | D-13 | Lista de clientes actuales de TurnoSala para no prospectarlos (REQ-VER-02 CA2): endpoint de la API de plataforma o exportación CSV periódica | F1 | Endpoint `GET /api/platform/v1/orgs` (solo nombre, dominio, teléfono) añadido al PRP-017; mientras tanto, CSV manual |
+| D-14 | **Prefijo 400 en llamadas comerciales.** La Resolución de 14/04/2026 (BOE núm. 93, 16/04/2026; en vigor desde el 17/04 y obligatoria desde ~17/10/2026) reserva el rango `+34 400` para las llamadas comerciales **salientes**: no recibe llamadas ni sirve para atención al cliente, y solo llama a números geográficos, móviles o nómadas. Twilio avisa de que desde el 17/10/2026 no se pueden usar otros números para llamadas comerciales salientes en España y de que el rango 400 exige KYC nacional. Consecuencias: (1) la voz necesita **dos números**: uno 400 para las salientes (llamada humana y de IA consentida) y uno geográfico con «CIF» para las entrantes de cartas y anuncios; (2) nadie puede devolver la llamada al 400; (3) consulta al asesor: ¿quedan dentro del ámbito de la Ley 10/2025 las llamadas B2B y las de IA con consentimiento? ¿qué excepción prevé su disposición transitoria? | F4 (llamada humana) y F5 (voz IA saliente) | Una sola decisión de arquitectura: el conector de voz **se niega a originar** una llamada comercial saliente si el número de origen no es del rango 400 (comprobación en `connectors` y test de contrato). Pedir el número 400 a Twilio al abrir F5; entretanto, el piloto de F4 no hace llamadas salientes. |
+| D-15 | Proveedor de LLM por ruta (ADR-005): ¿qué rutas pasan a OpenRouter y con qué modelo? | F1 (antes del piloto G1) | Todas en `anthropic`. Probar OpenRouter solo en `market.analyze` y `enrich.extract`, en sandbox, y promover una ruta solo si supera el conjunto dorado (REQ-LLM-05) |
+| D-16 | Condiciones para usar OpenRouter con datos reales: contrato de encargo (plan Business, DPA con cláusulas tipo), región (`eu.openrouter.ai`), y si se exige `zdr: true` en todas las rutas | F1 (antes de habilitarlo en `production`) | No habilitarlo en `production` sin DPA firmado; usar el endpoint de la UE; `data_collection: "deny"` siempre y `zdr: true` donde el modelo lo permita. Pregunta al asesor: ¿alcanza con el DPA de OpenRouter o hace falta contrato con el proveedor del modelo final? |
 
 ## Registro de respuestas
 
@@ -57,3 +100,4 @@ Cada decisión indica la fase que bloquea. El agente no avanza esa fase sin resp
 | ADR-003 | Arquitectura híbrida: motor propio + Odoo como CRM | 31/10/2026 | Promotor |
 | Alcance | Solo TurnoSala, extensible (producto como configuración) | 31/10/2026 | Promotor |
 | ADR-004 | Sin Odoo 19: sistema web completo con CRM y agenda propios (sustituye a ADR-003) | 31/10/2026 | Promotor |
+| ADR-005 | Proveedores de LLM intercambiables: Anthropic directo y OpenRouter (constitución 1.2) | 31/10/2026 | Promotor |

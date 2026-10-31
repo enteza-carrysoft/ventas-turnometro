@@ -135,6 +135,6 @@ nuevo; un `decisionId` recibido de fuera con > 60 s o de otro contacto/canal se 
 ## Documentación que debe existir antes de producción (la aporta el promotor)
 
 Aviso de privacidad y textos de consentimiento por canal (versionados) · registro de actividades de tratamiento ·
-evaluación de interés legítimo (LIA) para la investigación B2B y las cartas · contratos de encargado (Anthropic,
+evaluación de interés legítimo (LIA) para la investigación B2B y las cartas · contratos de encargado (Anthropic, OpenRouter si se habilita —ADR-005, D-16—,
 Twilio, Resend, proveedor de cartas, hosting) · política de conservación · informe del asesor sobre llamadas humanas
 B2B y cartas de prospección · contrato del servicio de consulta de Lista Robinson · política de grabación (si se activa).

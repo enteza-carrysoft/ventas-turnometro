@@ -48,7 +48,7 @@ EL SISTEMA DEBERÁ ejecutarlo en segundo plano por tareas `(fuente × municipio)
 - CA4: se muestran avance, coste acumulado y errores por fuente en tiempo casi real (refresco ≤ 10 s).
 
 **REQ-RES-02 (M)** — EL SISTEMA DEBERÁ ordenar las fuentes de más a menos fiables: registros oficiales y datos abiertos
-→ OpenStreetMap → APIs de mapas con licencia que lo permita → búsqueda web (herramienta `web_search` de Claude) →
+→ OpenStreetMap → APIs de mapas con licencia que lo permita → búsqueda web (herramienta de búsqueda web del proveedor de LLM: `web_search` de Claude directo o la de OpenRouter) →
 web corporativa. Cada adaptador declara licencia, límites de uso y qué campos puede **almacenar**.
 - CA1: de Google Places solo se almacena `place_id` (y lo que sus condiciones vigentes permitan); el resto se obtiene
   de la web de la empresa.
@@ -345,6 +345,54 @@ ejecutadas, respuestas, demos, pruebas, pagos, oposiciones, coste por demo y por
 transcripciones 12 meses, oportunidades perdidas 24 meses, decisiones y consentimientos 5 años (valores configurables,
 decisión abierta D-09). Las exclusiones (`suppressions`) se conservan mientras dure la actividad comercial, porque
 borrarlas reactivaría el contacto.
+
+## 20. Acceso a modelos de lenguaje (LLM)
+
+Cubre ADR-005: dos proveedores admitidos, **Anthropic directo** y **OpenRouter**, intercambiables por ruta.
+
+**REQ-LLM-01 (M)** — EL SISTEMA DEBERÁ hacer **todas** las llamadas a modelos de lenguaje a través de una pasarela única
+en `packages/ai`, con una interfaz propia (completar, salida estructurada, búsqueda web, herramientas) que no depende del
+formato de ningún proveedor.
+- CA1: test de arquitectura **T-ARQ-LLM**: ningún archivo fuera de `packages/ai` importa un SDK de LLM
+  (`@anthropic-ai/sdk`, `openai`…) ni contiene URLs de `api.anthropic.com` u `openrouter.ai`; con fixtures de violación
+  que el escáner debe detectar (mismo método que T-ARQ).
+- CA2: el resto del sistema solo conoce nombres de **ruta** (`enrich.extract`…), nunca modelos ni proveedores.
+
+**REQ-LLM-02 (M)** — EL SISTEMA DEBERÁ resolver cada ruta a `(proveedor, modelo, parámetros)` desde `settings.llm_routes`
+(por proveedor, un identificador de modelo distinto) y declarar las **capacidades** de cada proveedor (salida
+estructurada, búsqueda web con filtro de dominios, caché de prompt, Batch, razonamiento, herramientas estrictas).
+- CA1: si una ruta necesita una capacidad que su proveedor no ofrece, **la ruta se niega a ejecutarse** con un error
+  explícito; no se degrada en silencio (p. ej. Batch con OpenRouter) salvo alternativa declarada en la propia ruta.
+- CA2: con OpenRouter, toda petición que dependa de un parámetro (esquema JSON, herramientas) envía
+  `provider.require_parameters: true` (porque por defecto los parámetros no soportados se ignoran).
+- CA3: los dominios vetados (P2.6) se aplican **también en código** sobre las URL que devuelva la búsqueda, porque el
+  filtro de dominios del proveedor no está garantizado.
+- CA4: cambiar de proveedor o de modelo en una ruta no exige tocar código: solo `llm_routes`, con registro en `audit_log`.
+
+**REQ-LLM-03 (M)** — EL SISTEMA DEBERÁ mantener los proveedores de LLM **cerrados por defecto** (constitución P5.6).
+- CA1: una ruta solo usa un proveedor presente en `settings.llm_enabled_providers` (por defecto solo `anthropic`);
+  habilitar OpenRouter lo hace un `admin` y queda en `audit_log`.
+- CA2: con OpenRouter, toda petición lleva `provider.data_collection: "deny"`; las rutas marcadas `zdr` llevan además
+  `provider.zdr: true`, y en `production` se usa el endpoint de la UE si la decisión D-16 lo fija.
+- CA3: en `APP_MODE=production`, habilitar un proveedor exige que conste el contrato de encargo (ajuste
+  `llm_dpa_confirmed.<proveedor>` puesto por un `admin`); sin él, el proveedor sigue deshabilitado.
+- CA4: a un proveedor solo se le envían datos de empresa y texto de sus páginas públicas (P2.3); nunca consentimientos,
+  teléfonos o emails de personas.
+
+**REQ-LLM-04 (M)** — EL SISTEMA DEBERÁ registrar, por cada llamada, proveedor, ruta, modelo pedido, **modelo servido**,
+tokens (con los cacheados), coste y si hubo fallback, y comprobar el presupuesto diario antes de lanzarla (REQ-OBS-01).
+- CA1: el coste sale del proveedor cuando lo informa (`usage.cost` de OpenRouter, consultable luego por el id de la
+  generación) y, si no, de la tabla de precios versionada; nunca queda sin registrar.
+- CA2: los fallbacks permitidos son una **lista cerrada por ruta** (`allowed_models`); si el proveedor responde con un
+  modelo fuera de la lista, la respuesta se descarta y se registra.
+- CA3: `stop_reason`/`finish_reason` de rechazo, truncado (`max_tokens`/`length`) o error se normalizan y **nunca** se leen
+  como contenido válido.
+
+**REQ-LLM-05 (S)** — Antes de promover una ruta a otro proveedor o modelo en producción, EL SISTEMA DEBERÁ ejecutar el
+conjunto dorado de la ruta (`npm run eval:extract -- --route <ruta> --provider <p>`) y mostrar la comparación.
+- CA1: una ruta con extracción de campos solo se promueve si iguala el umbral de precisión de F1 (≥ 90 %) y la tasa de
+  rechazo de fragmentos no literales (REQ-ENR-01 CA2) no empeora.
+- CA2: el informe separa lo medido de lo supuesto y recoge coste por ficha en cada proveedor.
 
 ## Fuera de alcance
 
