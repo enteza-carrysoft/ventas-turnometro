@@ -8,9 +8,9 @@ llamada humana con copiloto, visita y email consentido). Incluye **CRM propio** 
 tiempo) y **agenda de demos** con reserva pública, hasta crear la prueba de 30 días en TurnoSala. Sin Odoo (ADR-004).
 
 **Estado (31/10/2026):** **F0 implementada** (monorepo, BD con tablas de solo inserción, puerta de cumplimiento T-01…T-22,
-`ContactService`, T-ARQ, autenticación, panel con kill switch, `product_facts` v1) · 233 tests y 6 e2e en verde · **pendiente la
-puerta G0**: el promotor revisa `spec/research/fuentes.md` y `spec/research/proveedores.md` y la concede. Siguiente fase: F1
-(`spec/phases/F1-*.md`, aún sin redactar).
+`ContactService`, T-ARQ, autenticación, panel con kill switch, `product_facts` v1) · 233 tests y 6 e2e en verde · **puerta G0
+concedida el 31/10/2026**. Siguiente fase: F1, investigación y fichas (`spec/phases/F1-investigacion.md`, **pendiente de
+aprobación del promotor**; sin código hasta entonces).
 
 ## Documentos (orden de lectura)
 

@@ -1,6 +1,6 @@
 # F0 — Cimientos y comprobaciones
 
-**Estado:** borrador revisado contra el estado real (pendiente de aprobación del promotor) · **Fecha:** 31/10/2026 · **Puerta:** G0 · **Duración:** 1 sprint
+**Estado:** **completada** · **G0 concedida por el promotor el 31/10/2026** · **Fecha:** 31/10/2026 · **Puerta:** G0 · **Duración:** 1 sprint
 
 ## Objetivo
 
