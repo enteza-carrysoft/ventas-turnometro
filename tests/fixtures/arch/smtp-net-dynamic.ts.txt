@@ -1,0 +1,4 @@
+export async function smtp() {
+  const net = await import('node:net');
+  return net.connect(25, 'mail.example.org');
+}

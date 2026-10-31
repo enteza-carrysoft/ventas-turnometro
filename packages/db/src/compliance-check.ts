@@ -28,10 +28,10 @@ export async function check(db: Db, input: CheckInput, opts: CheckOptions = {}):
   }
   const decisionId = uuidv7();
   await db.query(
-    `insert into compliance_decisions (id, input, prospect_id, channel, direction, destination, decision, rule_ids, reasons, consent_id)
-     values ($1, $2, (select id from prospects where id = $3), $4, $5, $6, $7, $8, $9, $10)`,
+    `insert into compliance_decisions (id, input, prospect_id, channel, direction, destination, decision, rule_ids, reasons, consent_id, created_at)
+     values ($1, $2, (select id from prospects where id = $3), $4, $5, $6, $7, $8, $9, $10, $11)`,
     [decisionId, JSON.stringify(input), input.prospectId, input.channel, input.direction, destination,
-      result.decision, result.ruleIds, result.reasons, result.consentId],
+      result.decision, result.ruleIds, result.reasons, result.consentId, now],
   );
   return { ...result, decisionId };
 }

@@ -1,0 +1,3 @@
+import { sendLetter } from '@turnosala/connectors/outbound';
+
+export const s = sendLetter;

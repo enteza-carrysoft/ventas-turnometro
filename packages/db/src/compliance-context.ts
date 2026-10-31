@@ -16,6 +16,11 @@ const BUDGET_PROVIDER: Partial<Record<Channel, string>> = {
   ai_call: 'voice', email_marketing: 'email', email_transactional: 'email',
 };
 
+/** Proveedor cuyo presupuesto diario limita el canal; null si el canal no tiene tope diario. */
+export function budgetProviderFor(channel: Channel): string | null {
+  return BUDGET_PROVIDER[channel] ?? null;
+}
+
 type Row = Record<string, unknown>;
 
 async function loadProspect(db: Db, input: CheckInput): Promise<ComplianceContext['prospect']> {

@@ -1,0 +1,3 @@
+import * as tls from 'tls';
+
+export const c = tls.connect;

@@ -1,0 +1,3 @@
+import { Lob } from 'lob';
+
+export const l = new Lob('key');
