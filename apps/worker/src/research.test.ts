@@ -1,4 +1,5 @@
-import { claimTask, createResearchJob, createTestDb, getProgress, ingestCandidate, type IngestCandidate, type TestDb } from '@turnosala/db';
+import { claimTask, createResearchJob, createTestDb, getProgress, ingestCandidate, type TestDb } from '@turnosala/db';
+import type { SourceCandidate } from '@turnosala/connectors';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { processOne, runUntilIdle, type ResearchDeps, type SourceAdapter } from './research.js';
 
@@ -19,7 +20,7 @@ afterAll(async () => {
 });
 
 const WORDS = ['Alfa Dental','Bravo Optica','Cedro Fisio','Delta Clinica','Eco Podologia','Faro Centro','Gala Estetica','Hinojo Salud','Iris Vision','Jaral Medico'];
-const cands = (prefix: string, n: number): IngestCandidate[] =>
+const cands = (prefix: string, n: number): SourceCandidate[] =>
   Array.from({ length: n }, (_, i) => ({ name: `${WORDS[(prefix.charCodeAt(0) + i * 3) % WORDS.length]} ${prefix.toUpperCase()}${i}${'xyz'.repeat(i + 1)}`, website: `https://${prefix}${i}-clinica.es/`, sourceId: 'osm', externalId: `${prefix}${i}`, sourceUrl: 'https://osm.example/', fetchedAt: AT, extractorVersion: 'osm-1', evidences: [] }));
 const deps = (adapter: SourceAdapter): ResearchDeps => ({ pool: t.app, adapters: { osm: adapter }, workerId: 'w1', now: () => AT });
 const prospects = async (): Promise<number> => Number(((await t.app.query('select count(*) n from prospects')).rows[0] as { n: string }).n);
@@ -32,6 +33,13 @@ describe('processOne / runUntilIdle (REQ-RES-01)', () => {
     expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ ineCode: '41091', limit: 200 }));
     expect(await getProgress(t.app, jobId)).toMatchObject({ status: 'done', candidates: 3, costEur: 0.1 });
     expect(await processOne(deps({ fetch }), jobId)).toBe('idle');
+  });
+
+  it('pasa al adaptador el municipio (nombre y provincia) del código INE de la tarea', async () => {
+    const fetch = vi.fn(async () => ({ candidates: [], costEur: 0 }));
+    const { jobId } = await createResearchJob(t.app, { segmentId, ineCodes: ['41038'], sourceIds: ['osm'], budgetEur: 5, createdBy: 'm' });
+    await processOne(deps({ fetch }), jobId);
+    expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ ineCode: '41038', territory: { name: 'Dos Hermanas', province: 'Sevilla' } }));
   });
 
   it('no ingesta más candidatos de los que caben en el lote aunque la fuente devuelva de más', async () => {

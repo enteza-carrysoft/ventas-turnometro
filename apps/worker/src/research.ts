@@ -1,24 +1,12 @@
-import { claimTask, failTask, finishTask, ingestCandidate, type ClaimedTask, type IngestCandidate } from '@turnosala/db';
+import type { SourceAdapter, SourceCandidate } from '@turnosala/connectors';
+import { claimTask, failTask, finishTask, ingestCandidate, type ClaimedTask } from '@turnosala/db';
 import type pg from 'pg';
 
 // Ejecutor de trabajos de investigación (REQ-RES-01): reclama una tarea (fuente × municipio), pide candidatos al adaptador de la fuente
 // (puerto; los reales llegan en F1.5), los ingesta con deduplicación y cierra la tarea. Reanudable: la ingesta es idempotente.
 
-export interface SourceRequest {
-  sourceId: string;
-  ineCode: string | null;
-  cursor: unknown;
-  /** candidatos que aún caben en el lote del trabajo */
-  limit: number;
-}
-export interface SourceResult {
-  candidates: IngestCandidate[];
-  costEur: number;
-  cursor?: unknown;
-}
-export interface SourceAdapter {
-  fetch(req: SourceRequest): Promise<SourceResult>;
-}
+export type { SourceAdapter, SourceRequest, SourceResult } from '@turnosala/connectors';
+
 export interface ResearchDeps {
   pool: pg.Pool;
   adapters: Partial<Record<string, SourceAdapter>>;
@@ -27,10 +15,15 @@ export interface ResearchDeps {
   leaseSeconds?: number | undefined;
 }
 
+async function territoryOf(pool: pg.Pool, ineCode: string | null): Promise<{ name: string; province: string } | undefined> {
+  if (!ineCode) return undefined;
+  return (await pool.query('select name, province from territories where ine_code = $1', [ineCode])).rows[0] as { name: string; province: string } | undefined;
+}
+
 const clock = (d: ResearchDeps): Date => (d.now ?? (() => new Date()))();
 
 /** Ingesta hasta `limit` candidatos nuevos; los que se fusionan con fichas existentes no cuentan. */
-async function ingestUpTo(pool: pg.Pool, candidates: IngestCandidate[], limit: number): Promise<number> {
+async function ingestUpTo(pool: pg.Pool, candidates: SourceCandidate[], limit: number): Promise<number> {
   let created = 0;
   for (const c of candidates) {
     if (created >= limit) break;
@@ -46,7 +39,8 @@ async function execute(deps: ResearchDeps, task: ClaimedTask): Promise<'done' | 
     return 'failed';
   }
   try {
-    const res = await adapter.fetch({ sourceId: task.sourceId, ineCode: task.ineCode, cursor: task.cursor, limit: task.remainingBatch });
+    const territory = await territoryOf(deps.pool, task.ineCode);
+    const res = await adapter.fetch({ sourceId: task.sourceId, ineCode: task.ineCode, cursor: task.cursor, limit: task.remainingBatch, ...(territory ? { territory } : {}) });
     const created = await ingestUpTo(deps.pool, res.candidates, task.remainingBatch);
     await finishTask(deps.pool, task.id, { candidates: created, costEur: res.costEur, cursor: res.cursor }, clock(deps));
     return 'done';

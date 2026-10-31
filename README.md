@@ -9,7 +9,7 @@ tiempo) y **agenda de demos** con reserva pública, hasta crear la prueba de 30 
 
 **Estado (31/10/2026):** **F0 implementada** (monorepo, BD con tablas de solo inserción, puerta de cumplimiento T-01…T-22,
 `ContactService`, T-ARQ, autenticación, panel con kill switch, `product_facts` v1) · **puerta G0 concedida el 31/10/2026**. **F1 (investigación y fichas) aprobada y en curso**
-(`spec/phases/F1-investigacion.md`): F1.1 (pasarela de LLM), F1.4 (trabajos de investigación reanudables), F1.6 (rastreador y extracción verificada), F1.7 (normalización y deduplicación) y F1.8 (puntuación) hechas · 547 tests y 6 e2e en verde.
+(`spec/phases/F1-investigacion.md`): F1.1 (pasarela de LLM), F1.4 (trabajos de investigación reanudables), F1.5 parcial (OSM), F1.6 (rastreador y extracción verificada), F1.7 (normalización y deduplicación) y F1.8 (puntuación) hechas · 567 tests y 6 e2e en verde.
 
 ## Documentos (orden de lectura)
 

@@ -166,6 +166,21 @@ aprobación expresa del gasto (P6.2).
   registrable se fusionan; el nombre muy parecido a un cliente bloquea aunque sea otra empresa (queda visible con motivo para revisión).
   Los adaptadores reales de HTTP (con `robots.txt` y 1 req/s) y de DNS para `checkWebsite`/`checkEmailMx` se escriben con el rastreador (F1.6);
   la clasificación de emails genéricos/personales (REQ-ENR-03) también va en F1.6.
+- **F1.5 completada solo en parte (31/10/2026)** — `connectors/sources`: contrato común (`SourceAdapter`), reintentos, veto de dominios, caché y adaptador **OSM/Overpass**.
+  Fixtures **sintéticas** con la forma documentada de Overpass (no capturas reales); ninguna prueba usa red. **Decisiones mías (revisables):** (1) reintentos
+  (RES-03): máx. 3 intentos; 429/406 esperan 30 s (política de Overpass), 5xx/red/tiempo agotado 2 s y 4 s; 403 y respuestas no JSON no se reintentan; al
+  fallar, la tarea queda con el motivo y el trabajo sigue (F1.4). (2) Overpass: consulta por `area["ref:ine"=…]` (el código INE del municipio), POST con
+  `User-Agent` identificable, **un solo hilo** (consultas encadenadas), caché de 24 h por consulta y `out tags center` (no se guardan coordenadas). El
+  endpoint es configurable: el público vale para el piloto, **para escalar hace falta servidor propio o de pago** (fuentes.md §3). (3) Cada candidato de OSM lleva
+  la evidencia `osm_attribution` («© OpenStreetMap contributors, ODbL 1.0») con enlace a `openstreetmap.org/copyright` (RES-02 CA2). La pregunta jurídica sobre ODbL
+  sigue abierta para el asesor (D-04). (4) Emails de OSM: solo genéricos de empresa (el personal se descarta con `classifyEmail`); webs de dominios vetados se
+  descartan en código (`VETOED_DOMAINS`: LinkedIn y buscadores de personas; **lista inicial conservadora a revisar con el asesor** y ampliar con los directorios cuyas
+  condiciones se lean una a una). (5) Los filtros de etiquetas OSM (p. ej. `healthcare=dentist`, `shop=optician`) los aportará la definición del segmento (F1.2); el
+  adaptador los recibe por configuración. (6) El ejecutor del worker resuelve nombre y provincia del municipio desde `territories` y se los pasa al adaptador.
+  **Mutaciones:** sin veto, 5 intentos, sin atribución, email personal admitido y sin cola de un hilo hacen fallar tests. **Pendiente de F1.5:** `web_search` vía pasarela
+  (requiere añadir la capacidad al adaptador de OpenRouter y verificarla contra la API real: herramienta `openrouter:web_search`, filtro de dominios y coste por búsqueda;
+  hasta entonces no se programa de memoria, CLAUDE.md), medir la cobertura real de OSM para clínicas en Sevilla (necesita red) y `regcess` solo si se confirma su
+  licencia. La «web corporativa» no es una fuente de descubrimiento: es el enriquecimiento de F1.6.
 - **F1.4 completada en lo que no necesita interfaz (31/10/2026)** — migración 0008 (`research_jobs`, `research_tasks`), `db/research.ts` (cola, frenos,
   control, progreso) y `apps/worker/research.ts` (ejecutor con adaptadores de fuente como puerto). **Decisiones mías (revisables):** (1) **sin `pg-boss`**: la
   propia tabla de tareas es la cola (`for update skip locked` + arrendamiento `lease_until`, 10 min). El estado por tarea ya da la reanudación tras un corte
