@@ -97,4 +97,9 @@ dentro de `evaluate`). Tests de integración de triggers contra Postgres efímer
 
 ## Aprendizajes
 
-(se rellena durante la ejecución)
+- **F0.1** — `actionlint` no se pudo ejecutar (la descarga de su imagen Docker la bloqueó el clasificador de permisos); el workflow se valida en su primera ejecución real tras `git push`. `eslint@9.39.5` sale como deprecado en `npm install`; revisar al cerrar la fase.
+- **F0.2** — `apps/web/server.mjs` es un marcador («OK») hasta F0.7. `worker` y `voice` están en el perfil `later` y `caddy` en `vps`. Lección: encadenar `commit` tras la CI sin comprobar su resultado dejó un commit con lint roto; ahora se comprueba antes.
+- **F0.3** — Decisión fuera de la spec: la **fuente de verdad del esquema son las migraciones SQL revisadas** (`packages/db/migrations`), no un esquema Drizzle. El esquema Drizzle (tipos) se añade cuando haga falta un repositorio tipado (F0.5 usa `pg` + Zod en el cargador de contexto). Por la misma regla de simplicidad, el runner de migraciones es propio (`migrate.ts`, ~30 líneas).
+- **F0.3** — `contact_points.evidence_id` y `contact_attempts.content_item_id` son `uuid` sin FK en F0 (las tablas `evidences` y `content_items` llegan en F1/F4); se añadirán las FK en esas migraciones.
+- **F0.3** — Las contraseñas de los roles `migrator`/`app` en las pruebas son fijas y solo de BD temporal. En despliegue las fija `bootstrapDatabase()` desde variables de entorno. Falta el script `npm run db:setup` para el desarrollador (crea BD, roles y migra); se hará con F0.7.
+- **F0.3** — Pruebas de BD: usan `TEST_DATABASE_URL` o, por defecto, el Postgres del compose en `127.0.0.1:5433`; sin Postgres levantado fallan (no se saltan en silencio).
