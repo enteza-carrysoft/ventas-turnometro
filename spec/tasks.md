@@ -22,12 +22,12 @@ algo cambió · nota en «Aprendizajes» de la fase si hubo una decisión fuera 
 | F0.5 | `packages/core/compliance`: `evaluate()` puro con la tabla completa + `check()` que persiste; tests T-01…T-22 (los de voz con dobles) | REQ-CMP-01 |
 | F0.6 | `packages/contact` esqueleto + T-ARQ (sin conectores reales todavía) | REQ-CMP-01 CA3 |
 | F0.7 | Auth (Better Auth), roles en servidor, panel vacío con `kill_switch` y modo visibles | REQ-PAN-01, P5 |
-| F0.8 | Agenda y clientes: calendarios de los comerciales (Google/Outlook: ¿publican ICS de ocupado?), videollamada (D-05) y fuente de clientes actuales de TurnoSala (D-13) → `spec/research/agenda-y-clientes.md` | REQ-AGE-03, REQ-VER-02, D-05, D-13 |
+| ~~F0.8~~ | **Movida a F3 (tarea F3.0) por decisión del promotor el 31/10/2026**: solo condiciona la agenda de demos (REQ-AGE-03, D-05). Lo de la lista de clientes (D-13) se exige antes de la primera ejecución real de F1 (ver F1) | — |
 | F0.9 | Notas de proveedores (con fecha): Twilio ConversationRelay es-ES y latencia desde el servidor; proveedor de cartas; servicio Lista Robinson; Resend subdominio; Claude (modelos, web search, precios) con la skill `claude-api`; OpenRouter (ids de modelo, parámetros, privacidad, comisiones) con su documentación oficial → `spec/research/proveedores.md` | D-06, D-07, D-08, D-14, D-15, D-16 |
 | F0.10 | `product_facts` v1 de TurnoSala desde turnosala.com y la app, con las discrepancias de precio señaladas (D-02) | REQ-MKT-01 |
 
-**Puerta G0:** puerta de cumplimiento con T-01…T-22 y T-ARQ en verde · notas de F0.4, F0.8 y F0.9 revisadas ·
-D-01, D-02 y D-03 resueltas.
+**Puerta G0:** puerta de cumplimiento con T-01…T-22 y T-ARQ en verde · notas de F0.4 y F0.9 revisadas ·
+D-01, D-02 y D-03 resueltas. *(F0.8 sale de G0 y pasa a F3.0: decisión del promotor, 31/10/2026.)*
 
 ## F1 — Investigación y fichas (MVP de datos)
 
@@ -43,6 +43,10 @@ D-01, D-02 y D-03 resueltas.
 | F1.8 | Puntuación pura versionada | REQ-SCO-01 |
 | F1.9 | Ficha y cola de revisión con atajos y muestreo; exportación CSV | REQ-REV-01/02/03 |
 | F1.10 | Conjunto dorado de 50 webs anotadas y `npm run eval:extract` (con `--route` y `--provider` para comparar proveedores) | design §11, REQ-LLM-05 |
+
+**Condiciones previas de la primera ejecución con webs reales** (no del desarrollo, que se hace con datos de prueba):
+**D-16** resuelta (contrato de encargo y región de OpenRouter) y **D-13** resuelta: lista de clientes actuales de TurnoSala
+cargada (CSV manual por defecto), para no prospectar a quien ya es cliente (REQ-VER-02 CA2).
 
 **Criterio:** lote piloto de **200 empresas de la provincia de Sevilla** (2–3 verticales A) investigado, deduplicado
 y revisado en staging; cada ficha con evidencias; **cero contactos**. Precisión de campos ≥ 90 % en el conjunto dorado;
@@ -68,6 +72,7 @@ la mueve por el tablero, crea tareas y notas; «No contactar» bloquea todos los
 
 | Tarea | Detalle | Cumple |
 |---|---|---|
+| F3.0 | **(antes F0.8)** Agenda: calendarios de los comerciales (Google/Outlook: ¿publican ICS de ocupado?), herramienta de videollamada (D-05) → `spec/research/agenda-y-clientes.md`. Condición para empezar F3.1 | REQ-AGE-03, D-05 |
 | F3.1 | Disponibilidad por comercial (franjas, excepciones, ajustes, enlace de videollamada) | REQ-AGE-01 |
 | F3.2 | Motor de huecos puro (`packages/core/slots`) con tests de cambio de hora y rendimiento; reparto entre comerciales | REQ-AGE-02 |
 | F3.3 | Reserva con restricción de exclusión, test de concurrencia, página pública `/demo/reservar` y reserva desde `/c/<token>` | REQ-DEM-01 |

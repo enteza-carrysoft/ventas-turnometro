@@ -25,7 +25,7 @@ los comerciales y los proveedores. Al terminar no se investiga ni se contacta a 
 | Herramientas del PC (31/10/2026) | Node **22.14.0** (coincide con el diseño: `engines`/`.nvmrc` = 22), npm **10.9.2**, git instalado, Docker 29.8.2 **con el motor respondiendo** (`docker ps` OK, sin contenedores). Corrige la versión anterior de esta tabla (Node 24 / motor caído) |
 | Antecedentes | Están en `C:\Users\usuario\Documents\Proyectos\turnometro` (hermano de este repo; el `../turnometro` del prompt es correcto, el hueco era mío). Leídos: `docs/TurnoSalaVentas.md`, `docs/RETOMAR.md` y `.claude/PRPs/PRP-017-api-plataforma-pruebas.md`. **PRP-017 sigue redactado para Odoo** (`external_id` = id de oportunidad de Odoo, `consent_ref` = `ts.consent` de Odoo, consumidor «botón de Odoo») y está pendiente de aprobación: hay que actualizarlo (consumidor = este sistema; `consent_ref` = id de `consents` de este sistema) y añadir `GET /api/platform/v1/orgs` para D-13. Es trabajo en el repo turnometro y de F3, no de F0. Precios: tres versiones distintas (ver D-02) |
 | Odoo | **No se usa** (ADR-004, 31/10/2026): CRM y agenda son propios |
-| Calendarios de los comerciales | Por comprobar en F0.8 (Google/Outlook, ICS de ocupado, videollamada) |
+| Calendarios de los comerciales | Por comprobar en F3.0 (antes F0.8: Google/Outlook, ICS de ocupado, videollamada) |
 | PRP-017 (API de plataforma) en turnometro | Documento pendiente de aprobación; no bloquea F0 |
 | Twilio | Cuenta existente de TurnoSala; subcuenta «Growth» por crear |
 | Hosting | Decisión D-01 abierta |
@@ -73,11 +73,11 @@ Decisiones de diseño de F0 (estaban sin fijar):
 | F0.5 | Puerta de cumplimiento (+ `applyOpposition()` mínima) | T-01…T-22 incl. T-03b (voz con dobles) y un test positivo y uno negativo por cada CG |
 | F0.6 | `ContactService` esqueleto + T-ARQ | T-ARQ (con fixtures de violación que debe detectar), T-20, T-21 |
 | F0.7 | Auth + roles + panel mínimo con `kill_switch` | e2e: `marketing` no puede activar el kill switch; `admin` sí y queda en `audit_log` |
-| F0.8 | `spec/research/agenda-y-clientes.md`: qué calendario usa cada comercial y si publica ICS de ocupado (Google: «dirección secreta en formato iCal»; Outlook: «publicar calendario»), herramienta de videollamada (D-05) y cómo obtener la lista de clientes actuales de TurnoSala (D-13) | Revisado por el promotor |
+| ~~F0.8~~ → **F3.0** | *(movida a F3 el 31/10/2026)* `spec/research/agenda-y-clientes.md`: qué calendario usa cada comercial y si publica ICS de ocupado (Google: «dirección secreta en formato iCal»; Outlook: «publicar calendario»), herramienta de videollamada (D-05) y cómo obtener la lista de clientes actuales de TurnoSala (D-13) | Revisado por el promotor |
 | F0.9 | `spec/research/proveedores.md` (Twilio, cartas, Robinson, Resend, Claude y OpenRouter, ADR-005). Aquí se **verifica con la skill `claude-api`** lo que `design.md` §4.1 da por supuesto (IDs de modelo, `web_search_20260209`, `fallbacks`, parámetros rechazados, precios): hasta entonces no se programa contra ello | Revisado por el promotor |
 | F0.10 | `product_facts` v1 en `draft` con discrepancias señaladas. Fuentes: turnosala.com (WebFetch) y, si el promotor los aporta, `TurnoSalaVentas.md`/`RETOMAR.md`; no se inventa nada que no aparezca | El promotor la aprueba (D-02) |
 
-Orden: F0.1 → F0.2 → F0.3 → F0.5 → F0.6 → F0.7. En paralelo: F0.4, F0.8, F0.9, F0.10.
+Orden: F0.1 → F0.2 → F0.3 → F0.5 → F0.6 → F0.7. En paralelo: F0.4, F0.9, F0.10 (F0.8 pasó a F3.0).
 
 ## Plan de pruebas
 
@@ -147,9 +147,9 @@ dentro de `evaluate`). Tests de integración de triggers contra Postgres efímer
   **D-15** OpenRouter por defecto en todas las rutas (enmienda ADR-005; `anthropic` solo para Batch y Haiku, que OpenRouter no
   lista) · **`product_facts` v1 aprobado** (la acción de admin se ejecuta en la BD de producción con
   `npm run approve:product-facts -- <correo>`, probada con test). **Aplazado:** F0.8, D-14, D-16, D-17.
-- **Estado de G0 (31/10/2026):** cumplido: puerta con T-01…T-22 y T-ARQ en verde; D-01, D-02, D-03 resueltas; notas de F0.4 y
-  F0.9 escritas (**falta que el promotor las revise**). **Pendiente: la nota de F0.8** (calendarios y clientes), que la
-  definición de G0 exige. **Propuesta (necesita su aprobación, cambia `tasks.md`):** mover F0.8 a condición de **F3**, que es lo
-  único que bloquea (REQ-AGE-03, D-05, D-13), para poder cerrar G0 y abrir F1. D-16 condiciona la primera ejecución con webs
-  reales de F1, no su desarrollo.
+- **F0.8 movida a F3.0 (aprobado por el promotor el 31/10/2026).** `tasks.md` actualizado: G0 ya no exige la nota de
+  calendarios. D-13 (lista de clientes) y D-16 (OpenRouter) pasan a ser condiciones de la **primera ejecución con webs reales**
+  de F1, no de su desarrollo.
+- **Estado de G0 (31/10/2026):** cumplido: puerta con T-01…T-22 y T-ARQ en verde; D-01, D-02 y D-03 resueltas. **Único
+  requisito abierto: que el promotor revise `spec/research/fuentes.md` y `proveedores.md` (F0.4 y F0.9) y conceda G0.**
 - **F0.3** — Pruebas de BD: usan `TEST_DATABASE_URL` o, por defecto, el Postgres del compose en `127.0.0.1:5433`; sin Postgres levantado fallan (no se saltan en silencio).
