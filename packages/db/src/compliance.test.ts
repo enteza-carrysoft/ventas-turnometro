@@ -44,6 +44,13 @@ async function grantAi(createdAt = '2026-11-01T09:00:00Z'): Promise<string> {
 }
 
 describe('check() con la BD (REQ-CMP-01)', () => {
+  it('D-03: con los presupuestos sembrados la voz está a 0 €/día y se bloquea por CG-04', async () => {
+    const r = await check(t.app, ai(), { clock });
+    expect(r.ruleIds).toEqual(['CG-04']);
+    // Los tests siguientes simulan un presupuesto de voz ya aprobado por el promotor (10 €/día).
+    await t.app.query(`update settings set value = '{"llm":5,"voice":10,"web_search":2,"email":2}' where key = 'budget_daily_eur'`);
+  });
+
   it('T-01 sin consentimiento → BLOCK CG-12, y la decisión queda guardada', async () => {
     const r = await check(t.app, ai(), { clock });
     expect(r.decision).toBe('BLOCK');

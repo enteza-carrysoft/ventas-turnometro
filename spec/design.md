@@ -137,15 +137,16 @@ interface LlmResult<T> {
 | Parámetros no soportados | error 400 | **se ignoran en silencio** | `require_parameters: true`; la pasarela no envía `temperature`/`top_p` |
 | Herramientas / voz | `strict: true`; sin `tool_choice` forzado en Opus 5.5 | `tools` + `tool_choice` | `voice.dialog` fija a `anthropic` hasta medir latencia (F5) |
 
-**Rutas** (proveedor por defecto: `anthropic`; la columna OpenRouter es lo que se **probaría**, D-15):
+**Rutas** (proveedor por defecto: **`openrouter`** por decisión D-15; `anthropic` solo para Batch y para las rutas sin modelo
+equivalente en OpenRouter, que hay que **elegir y medir** antes de cambiarlas):
 
-| Ruta | Modelo `anthropic` | Esfuerzo | Modelo `openrouter` (a probar) | Notas |
-|---|---|---|---|---|
-| `market.analyze`, `report.weekly` | `claude-opus-5-5` | `high` | `anthropic/claude-opus-5.5[1m]` | Agente con búsqueda y lectura web; streaming |
-| `enrich.extract`, `content.generate` | `claude-opus-5-5` | `medium` | `anthropic/claude-opus-5.5[1m]` | Salida estructurada + Zod; **Batch solo con `anthropic`** |
-| `discovery` (fuente web) | `claude-opus-5-5` | `low` | `anthropic/claude-opus-5.5[1m]` | `user_location` España; veto de dominios en código además |
-| `inbound.classify` | `claude-haiku-5-5` | `low` | **sin Haiku 5.5 en su lista**: elegir y medir | Clasificación corta |
-| `voice.dialog` | `claude-haiku-5-5` | `low` | no hasta medir latencia y confirmar modelo | Latencia; streaming; herramientas estrictas |
+| Ruta | Proveedor por defecto | Modelo `openrouter` | Modelo `anthropic` (Batch o respaldo) | Esfuerzo | Notas |
+|---|---|---|---|---|---|
+| `market.analyze`, `report.weekly` | `openrouter` | `anthropic/claude-opus-5.5[1m]` | `claude-opus-5-5` | `high` | Agente con búsqueda y lectura web; streaming |
+| `enrich.extract`, `content.generate` | `openrouter` | `anthropic/claude-opus-5.5[1m]` | `claude-opus-5-5` (**Batch**, −50 %) | `medium` | Salida estructurada + Zod; los lotes baratos no urgentes usan `anthropic` si se habilita |
+| `discovery` (fuente web) | `openrouter` | `anthropic/claude-opus-5.5[1m]` | `claude-opus-5-5` | `low` | `user_location` España; veto de dominios en código además |
+| `inbound.classify` | `anthropic` **hasta elegir modelo** | **sin Haiku 5.5 en su lista**: elegir y medir | `claude-haiku-5-5` | `low` | Clasificación corta (F6) |
+| `voice.dialog` | `anthropic` **hasta medir** | no hasta medir latencia y confirmar modelo | `claude-haiku-5-5` | `low` | Latencia; streaming; herramientas estrictas (F5) |
 
 Precios de referencia (verificados el 31/10/2026, por millón de tokens): Opus 5.5 4 $ entrada / 20 $ salida (lectura de
 caché 0,20 $); Haiku 5.5 0,10 $ / 0,50 $ **hasta 100.000 tokens de prompt** (0,50 $ / 2,50 $ por encima); Batch −50 %;

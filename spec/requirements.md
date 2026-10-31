@@ -370,7 +370,7 @@ estructurada, búsqueda web con filtro de dominios, caché de prompt, Batch, raz
 - CA4: cambiar de proveedor o de modelo en una ruta no exige tocar código: solo `llm_routes`, con registro en `audit_log`.
 
 **REQ-LLM-03 (M)** — EL SISTEMA DEBERÁ mantener los proveedores de LLM **cerrados por defecto** (constitución P5.6).
-- CA1: una ruta solo usa un proveedor presente en `settings.llm_enabled_providers` (por defecto solo `anthropic`);
+- CA1: una ruta solo usa un proveedor presente en `settings.llm_enabled_providers` (valor sembrado: `openrouter`, decisión D-15; `anthropic` solo se habilita para Batch o rutas sin modelo en OpenRouter);
   habilitar OpenRouter lo hace un `admin` y queda en `audit_log`.
 - CA2: con OpenRouter, toda petición lleva `provider.data_collection: "deny"`; las rutas marcadas `zdr` llevan además
   `provider.zdr: true`, y en `production` se usa el endpoint de la UE si la decisión D-16 lo fija.

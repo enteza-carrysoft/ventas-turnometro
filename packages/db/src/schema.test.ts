@@ -128,7 +128,8 @@ describe('semilla de F0', () => {
     for (const k of ['b2b_human_calls_approved', 'postal_b2b_approved', 'lssi_customer_exception_approved', 'recording_enabled']) {
       expect(s[k], k).toBe(false);
     }
-    expect(s.budget_monthly_total_eur).toBe(600);
+    expect(s.budget_monthly_total_eur).toBe(150); // D-03: presupuestos mínimos
+    expect(s.budget_daily_eur).toEqual({ llm: 5, voice: 0, web_search: 2, email: 2 });
   });
 
   it('todas las fuentes sembradas están inactivas (F0.4)', async () => {

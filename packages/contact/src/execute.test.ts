@@ -23,6 +23,8 @@ beforeAll(async () => {
     [campaignId, product, segment],
   );
   await t.app.query(`update settings set value = 'true' where key = 'b2b_human_calls_approved'`);
+  // D-03 siembra la voz a 0 €/día; estos tests simulan un presupuesto de voz ya aprobado.
+  await t.app.query(`update settings set value = '{"llm":5,"voice":10,"web_search":2,"email":2}' where key = 'budget_daily_eur'`);
 }, 60_000);
 afterAll(async () => {
   await t.drop();

@@ -18,7 +18,8 @@
     "e2e": "npm run build -w @turnosala/web && playwright test",
     "db:setup": "tsx scripts/db-setup.ts",
     "user:create": "tsx scripts/create-user.ts",
-    "seed:product-facts": "tsx scripts/seed-product-facts.ts"
+    "seed:product-facts": "tsx scripts/seed-product-facts.ts",
+    "approve:product-facts": "tsx scripts/approve-product-facts.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

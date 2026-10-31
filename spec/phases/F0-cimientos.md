@@ -141,4 +141,15 @@ dentro de `evaluate`). Tests de integración de triggers contra Postgres efímer
 - **F0.10** — **Hallazgo comercial (D-17):** la web publica **14 días** de prueba y todo el material (campaña, PRP-017, REQ-TRI)
   asume 30. Con la constitución P2.7 el contenido solo puede prometer lo publicado: `claimableTrialDays()` devuelve [14]. No
   bloquea F1, sí F2/F4 (landings y cartas). No se ha aprobado nada: aprobar `product_facts` es del promotor (admin).
+- **Respuestas del promotor del 31/10/2026** (registradas en `decisions.md`): **D-01** producción en VPS de la UE · **D-03**
+  presupuestos mínimos (LLM 5 €, búsqueda 2 €, email 2 €, voz 0 € hasta F5, 150 €/mes; migración 0005 con `audit_log`; la voz
+  queda bloqueada por CG-04, lo que está probado) · **D-10** voz entrante de IA 24 horas (CG-05 ya solo afecta a las salientes) ·
+  **D-15** OpenRouter por defecto en todas las rutas (enmienda ADR-005; `anthropic` solo para Batch y Haiku, que OpenRouter no
+  lista) · **`product_facts` v1 aprobado** (la acción de admin se ejecuta en la BD de producción con
+  `npm run approve:product-facts -- <correo>`, probada con test). **Aplazado:** F0.8, D-14, D-16, D-17.
+- **Estado de G0 (31/10/2026):** cumplido: puerta con T-01…T-22 y T-ARQ en verde; D-01, D-02, D-03 resueltas; notas de F0.4 y
+  F0.9 escritas (**falta que el promotor las revise**). **Pendiente: la nota de F0.8** (calendarios y clientes), que la
+  definición de G0 exige. **Propuesta (necesita su aprobación, cambia `tasks.md`):** mover F0.8 a condición de **F3**, que es lo
+  único que bloquea (REQ-AGE-03, D-05, D-13), para poder cerrar G0 y abrir F1. D-16 condiciona la primera ejecución con webs
+  reales de F1, no su desarrollo.
 - **F0.3** — Pruebas de BD: usan `TEST_DATABASE_URL` o, por defecto, el Postgres del compose en `127.0.0.1:5433`; sin Postgres levantado fallan (no se saltan en silencio).
