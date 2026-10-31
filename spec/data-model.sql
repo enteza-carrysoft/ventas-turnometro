@@ -213,6 +213,8 @@ create table contact_attempts (
   content_item_id uuid references content_items,
   status text not null check (status in ('planned','sending','sent','delivered','failed','cancelled','returned')),
   provider text, provider_ref text, cost_eur numeric(10,4), idempotency_key text unique not null,
+  campaign_id uuid references campaigns, demo_id uuid references demos,   -- cadencias CG-06 (migración 0003; demos se crea antes en las migraciones)
+  outcome text check (outcome in ('answered','unanswered','not_interested')),
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
 

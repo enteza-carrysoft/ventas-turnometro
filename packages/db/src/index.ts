@@ -4,3 +4,6 @@ export { migrate, MIGRATIONS_DIR } from './migrate.js';
 export { bootstrapDatabase, ensureExtensions } from './bootstrap.js';
 export { consentInputSchema, insertConsent, type ConsentInput } from './consents.js';
 export { approveProductFacts, type ApproveFactsInput } from './product-facts.js';
+export { check, type CheckOptions } from './compliance-check.js';
+export { loadContext, type Db } from './compliance-context.js';
+export { applyOpposition, type OppositionInput, type OppositionResult } from './opposition.js';
