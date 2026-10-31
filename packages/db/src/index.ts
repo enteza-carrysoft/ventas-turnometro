@@ -8,3 +8,4 @@ export { check, type CheckOptions } from './compliance-check.js';
 export { loadContext, budgetProviderFor, type Db } from './compliance-context.js';
 export { createTestDb, dropDatabase, adminUrl, urlFor, TEST_APP_PW, TEST_MIGRATOR_PW, type TestDb } from './testing.js'; // solo para pruebas
 export { applyOpposition, type OppositionInput, type OppositionResult } from './opposition.js';
+export { seedProductFactsDraft, PRODUCT_FACTS_V1_PATH } from './seed-product-facts.js';

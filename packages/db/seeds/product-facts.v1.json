@@ -1,0 +1,125 @@
+{
+  "vat_rate": 0.21,
+  "prices_include_vat_on_web": true,
+  "plans": [
+    {
+      "id": "basic",
+      "name": "Básico",
+      "price_month_ex_vat": 24,
+      "price_year_ex_vat": 240,
+      "quote_only": false,
+      "limits": { "centers": 1, "rooms": 5, "screens": 1 },
+      "includes": [
+        "1 centro y hasta 5 consultas",
+        "Recepción, profesional y 1 pantalla",
+        "Turnos sin cita y agenda manual",
+        "Impresión de etiquetas y ticket QR",
+        "Importación de citas por Excel",
+        "Estadísticas básicas"
+      ],
+      "source": { "url": "https://turnosala.com", "fetched_at": "2026-10-31" }
+    },
+    {
+      "id": "pro",
+      "name": "Profesional",
+      "price_month_ex_vat": 69,
+      "price_year_ex_vat": 690,
+      "quote_only": false,
+      "limits": { "centers": 3, "rooms": 15, "screens": "unlimited" },
+      "includes": [
+        "Hasta 3 centros y 15 consultas",
+        "Pantallas con locución por voz",
+        "Cita previa online con tu marca",
+        "Recordatorios por email",
+        "API de citas",
+        "Todo lo del plan Básico"
+      ],
+      "source": { "url": "https://turnosala.com", "fetched_at": "2026-10-31" }
+    },
+    {
+      "id": "business",
+      "name": "Business",
+      "price_month_ex_vat": 149,
+      "price_year_ex_vat": 1490,
+      "quote_only": false,
+      "limits": { "centers": 5, "workstations": 40, "screens": "unlimited" },
+      "includes": [
+        "Hasta 5 centros y 40 puestos",
+        "Kiosco de autoservicio",
+        "Avisos por SMS y WhatsApp (consumo aparte)",
+        "Contenidos en pantallas",
+        "Estadísticas avanzadas y alertas",
+        "Control de aforo"
+      ],
+      "source": { "url": "https://turnosala.com", "fetched_at": "2026-10-31" }
+    },
+    {
+      "id": "enterprise",
+      "name": "Enterprise",
+      "price_month_ex_vat": null,
+      "price_year_ex_vat": null,
+      "quote_only": true,
+      "limits": {},
+      "includes": [
+        "Centros y puestos sin límite",
+        "SSO, webhooks y marca blanca",
+        "Dominio propio",
+        "Retención de datos a medida",
+        "Integraciones específicas bajo presupuesto",
+        "Acuerdo de nivel de servicio a medida"
+      ],
+      "source": { "url": "https://turnosala.com", "fetched_at": "2026-10-31" }
+    }
+  ],
+  "addons": [
+    { "id": "extra_center", "name": "Centro adicional", "price_ex_vat": 25, "billing": "monthly", "min_plan": "pro", "status": "indicative", "source": "configurador de turnosala.com (31/10/2026): «30,25 €/mes por centro (IVA incluido)»; «los extras requieren validación comercial y técnica»" },
+    { "id": "extra_workstation", "name": "Consultas o mesas extra", "price_ex_vat": 4, "billing": "monthly", "min_plan": null, "status": "indicative", "source": "configurador de turnosala.com (31/10/2026): «4,84 €/mes por puesto (IVA incluido)»" },
+    { "id": "extra_screen", "name": "Pantalla extra", "price_ex_vat": 9, "billing": "monthly", "min_plan": null, "status": "indicative", "source": "configurador de turnosala.com (31/10/2026): «10,89 €/mes por pantalla (IVA incluido; ilimitadas desde Profesional)»" },
+    { "id": "kiosk", "name": "Kiosco de autoservicio", "price_ex_vat": 19, "billing": "monthly", "min_plan": "business", "status": "indicative", "source": "configurador de turnosala.com (31/10/2026): «22,99 €/mes por kiosco (IVA incluido)»" },
+    { "id": "online_booking", "name": "Cita previa online", "price_ex_vat": 20, "billing": "monthly", "min_plan": null, "status": "indicative", "source": "configurador de turnosala.com (31/10/2026): «24,20 €/mes (IVA incluido; incluida desde Profesional)»" },
+    { "id": "sms_pack_500", "name": "Pack 500 SMS", "price_ex_vat": 35, "billing": "one_off", "min_plan": "business", "status": "indicative", "source": "configurador de turnosala.com (31/10/2026): «42,35 € por pack (IVA incluido), según uso»" },
+    { "id": "whatsapp_pack_1000", "name": "Pack 1.000 WhatsApp", "price_ex_vat": 49, "billing": "one_off", "min_plan": "business", "status": "indicative", "source": "configurador de turnosala.com (31/10/2026): «59,29 € por pack (IVA incluido), según uso»" }
+  ],
+  "trials": [
+    { "id": "web_self_service", "channel": "self_service_web", "days": 14, "published": true, "source": "turnosala.com (31/10/2026): «Prueba 14 días gratis», «Planes de pago con 14 días de prueba», «14 días para conocer TurnoSala»" },
+    { "id": "app_checkout", "channel": "stripe_checkout_app", "days": 30, "published": false, "source": "turnometro/src/features/billing/lib/checkout-params.ts: TRIAL_DAYS = 30 (no figura en la web)" },
+    { "id": "sales_trial", "channel": "sales_trial", "days": 30, "published": false, "source": "turnometro/.claude/PRPs/PRP-017 (prueba comercial tras demo; pendiente de aprobación)" }
+  ],
+  "promotions": [],
+  "terms": { "no_lock_in": true, "cancel_anytime": true },
+  "urls": { "web": "https://turnosala.com", "app": "https://app.turnosala.com" },
+  "discrepancies": [
+    {
+      "field": "plans.price_month_ex_vat",
+      "values": [
+        "TurnoSalaVentas.md (26/10/2026): 24 / 58 / 124 €/mes sin IVA",
+        "RETOMAR.md (27/10/2026): 29 / 69 / 149 €/mes «sin IVA»",
+        "web publicada (31/10/2026): 29,04 / 83,49 / 180,29 € con IVA = 24 / 69 / 149 € sin IVA; anual con IVA 290,40 / 834,90 / 1.802,90"
+      ],
+      "note": "Se usa la web publicada. El «29» de RETOMAR coincide con el precio CON IVA del Básico (29,04) y los 58 y 124 de TurnoSalaVentas.md son anteriores. Confirmar que los precios creados en Stripe coinciden (RETOMAR §4)."
+    },
+    {
+      "field": "trials.days",
+      "values": [
+        "web publicada: 14 días de prueba",
+        "app (checkout de Stripe): TRIAL_DAYS = 30",
+        "TurnoSalaVentas.md, campaña y PRP-017: 30 días"
+      ],
+      "note": "Todo el material comercial prometía 30 días y la web publica 14. Hasta que el promotor lo decida, el contenido solo puede prometer lo publicado (14). Ver D-17."
+    },
+    {
+      "field": "promotions.TURNOSALA50",
+      "values": [
+        "RETOMAR.md: cupón −50 % los 3 primeros meses, pendiente de crear en Stripe",
+        "web publicada: ningún código ni fecha",
+        "README de la web: «precios, campañas y el código TURNOSALA50 son propuestas»"
+      ],
+      "note": "Sin promoción citable (REQ-MKT-01 CA3) hasta que se confirme, se publique y tenga fecha de caducidad."
+    },
+    {
+      "field": "addons.price_ex_vat",
+      "values": ["importes del configurador de la web, sin IVA calculados dividiendo entre 1,21"],
+      "note": "Orientativos: la propia web dice que los extras requieren validación comercial y técnica. No usarlos en cartas ni anuncios."
+    }
+  ]
+}

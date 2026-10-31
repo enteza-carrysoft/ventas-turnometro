@@ -133,4 +133,12 @@ dentro de `evaluate`). Tests de integración de triggers contra Postgres efímer
 - **F0.4 / F0.9** — Informes escritos: `spec/research/fuentes.md` y `spec/research/proveedores.md` (borradores para revisión).
   Siguen **abiertos**: licencia de REGCESS (falta una muestra), latencia de ConversationRelay y precio de ConversationRelay
   (necesitan cuenta de Twilio y servidor), límites de OpenRouter para cuentas de pago y recepción de correo de Resend.
+- **F0.10 (31/10/2026)** — `product_facts` v1 de TurnoSala **sembrado en borrador** (`npm run seed:product-facts`), con esquema
+  Zod en `packages/core/src/product/facts.ts` y datos en `packages/db/seeds/product-facts.v1.json`, tomados de turnosala.com
+  y del HTML de la web de `turnometro`. Resuelve de hecho D-02: **24 / 69 / 149 € sin IVA** (la web publica 29,04 / 83,49 /
+  180,29 con IVA; los importes sin IVA reproducen exactamente los publicados, con test). Sin promociones (`TURNOSALA50` no se
+  publica). Los extras del configurador quedan como «orientativos» (la web dice que requieren validación).
+- **F0.10** — **Hallazgo comercial (D-17):** la web publica **14 días** de prueba y todo el material (campaña, PRP-017, REQ-TRI)
+  asume 30. Con la constitución P2.7 el contenido solo puede prometer lo publicado: `claimableTrialDays()` devuelve [14]. No
+  bloquea F1, sí F2/F4 (landings y cartas). No se ha aprobado nada: aprobar `product_facts` es del promotor (admin).
 - **F0.3** — Pruebas de BD: usan `TEST_DATABASE_URL` o, por defecto, el Postgres del compose en `127.0.0.1:5433`; sin Postgres levantado fallan (no se saltan en silencio).
