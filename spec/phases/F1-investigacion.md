@@ -166,6 +166,19 @@ aprobación expresa del gasto (P6.2).
   registrable se fusionan; el nombre muy parecido a un cliente bloquea aunque sea otra empresa (queda visible con motivo para revisión).
   Los adaptadores reales de HTTP (con `robots.txt` y 1 req/s) y de DNS para `checkWebsite`/`checkEmailMx` se escriben con el rastreador (F1.6);
   la clasificación de emails genéricos/personales (REQ-ENR-03) también va en F1.6.
+- **F1.4 completada en lo que no necesita interfaz (31/10/2026)** — migración 0008 (`research_jobs`, `research_tasks`), `db/research.ts` (cola, frenos,
+  control, progreso) y `apps/worker/research.ts` (ejecutor con adaptadores de fuente como puerto). **Decisiones mías (revisables):** (1) **sin `pg-boss`**: la
+  propia tabla de tareas es la cola (`for update skip locked` + arrendamiento `lease_until`, 10 min). El estado por tarea ya da la reanudación tras un corte
+  (CA3) y evita una dependencia y un esquema extra; si más adelante hace falta cron o prioridades se reconsidera. (2) Una tarea cuyo arrendamiento caduca se
+  reclama de nuevo; tras 3 intentos se da por fallida (no se reintenta eternamente). (3) Un fallo devuelve la tarea a la cola hasta 3 intentos y el trabajo sigue
+  con el resto; el trabajo termina `done` si algo se completó (o se frenó) y `failed` si todo falló. (4) Frenos de CA2: al alcanzar el lote (≤200, restricción en BD)
+  o el presupuesto del trabajo se saltan las tareas pendientes y se anota `stop_reason` (`batch_limit`/`budget`); el coste de tareas fallidas también cuenta.
+  (5) Solo cuentan como candidatos los **creados**; los fusionados con fichas existentes no. (6) Fuente inactiva ⇒ la creación se rechaza y queda en `audit_log`
+  (`research.source_rejected`); pausar/reanudar/cancelar también se auditan. (7) Una tarea en curso que termina tras cancelar el trabajo guarda su resultado pero
+  no lo resucita. **Mutaciones:** sin freno de lote, sin barrido de arrendamientos agotados y rollup sobre trabajos cancelados hacen fallar tests; quitar
+  `skip locked` no (Postgres reevalúa la fila, es solo rendimiento). **Pendiente de F1.4:** el panel con refresco ≤10 s y los botones de pausa/cancelar
+  (e2e) van con la interfaz en F1.9; `getProgress` ya devuelve todo lo que necesita (avance, coste, errores por fuente). El presupuesto **diario** de
+  búsqueda lo aplicarán los adaptadores de F1.5; el del LLM ya lo aplica la pasarela.
 - **F1.6 completada en lo que no necesita red ni gasto (31/10/2026)** — `connectors/crawler` (rastreador), `core/extraction` (minimización, prompt y
   verificación) y `db/enrichment` + `apps/worker/enrich` (orquestación). Todo con servidor HTTP local y modelo simulado: **ninguna llamada a internet ni al LLM real**.
   **Decisiones mías (revisables):** (1) el rastreador sigue `robots.txt` (RFC 9309): 404 ⇒ permitido; **5xx o error de red ⇒ todo prohibido**, nunca se

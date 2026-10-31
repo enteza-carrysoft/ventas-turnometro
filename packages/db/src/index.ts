@@ -14,3 +14,7 @@ export { importTurnosalaCustomers, type CustomerImportResult } from './customers
 export { parseCsv } from './csv.js';
 export { annotateVerification, type VerificationResults } from './verification.js';
 export { saveEnrichment, type SaveEnrichmentOptions, type SaveEnrichmentResult } from './enrichment.js';
+export {
+  createResearchJob, claimTask, finishTask, failTask, pauseJob, resumeJob, cancelJob, getProgress, MAX_BATCH, MAX_ATTEMPTS,
+  type CreateJobInput, type ClaimOptions, type ClaimedTask, type FinishInfo, type Progress,
+} from './research.js';
