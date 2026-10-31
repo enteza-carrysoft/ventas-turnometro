@@ -49,3 +49,20 @@ export function isWeekend(weekday: number): boolean {
 
 export const HOUR_MS = 3_600_000;
 export const DAY_MS = 24 * HOUR_MS;
+
+/**
+ * Primer instante (UTC) del día local de `timeZone` que contiene `at`. Busca por bisección en lugar de restar horas de
+ * reloj: los días del cambio de hora duran 23 o 25 horas y restar daba una hora de error.
+ */
+export function dayStartMadrid(at: Date, timeZone: string = 'Europe/Madrid'): Date {
+  const day = localParts(at, timeZone).date;
+  let lo = at.getTime() - 26 * HOUR_MS; // seguro: ningún día local dura más de 25 h
+  let hi = at.getTime();
+  while (hi - lo > 1000) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (localParts(new Date(mid), timeZone).date === day) hi = mid;
+    else lo = mid;
+  }
+  // La medianoche local cae siempre en un minuto exacto y `hi` está a menos de 1 s de ella: se trunca al minuto.
+  return new Date(Math.floor(hi / 60_000) * 60_000);
+}

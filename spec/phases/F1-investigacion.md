@@ -1,6 +1,6 @@
 # F1 — Investigación y fichas (MVP de datos)
 
-**Estado:** borrador (pendiente de aprobación del promotor) · **Fecha:** 31/10/2026 · **Puerta:** G1 · **Duración estimada:** 2 sprints
+**Estado:** **aprobada por el promotor el 31/10/2026 con los valores por defecto** (solo adaptador `openrouter`; fuentes OSM + `web_search` + web corporativa; verticales D-11 por defecto; 5 €/día). Pendientes para más adelante: persona que anota el conjunto dorado, clave `OPENROUTER_API_KEY` y tope de pruebas reales (solo F1.10 y contrato real) · **Fecha:** 31/10/2026 · **Puerta:** G1 · **Duración estimada:** 2 sprints
 
 ## Objetivo
 
@@ -128,7 +128,28 @@ aprobación expresa del gasto (P6.2).
 
 ## Aprendizajes
 
-(se rellena durante la ejecución)
+- **F1.1 completada (31/10/2026)** — `packages/ai`: pasarela (`createGateway`), adaptador `openrouter` (HTTP directo con `fetch`, sin SDK),
+  tienda sobre Postgres (`createPgLlmStore`), migración 0006 con las 8 rutas y **T-ARQ-LLM** (escáner de SDK y URL de LLM fuera de
+  `packages/ai`, con 6 fixtures de violación y comprobado con una violación real plantada). 299 tests en verde; 8 mutaciones de la
+  pasarela y del adaptador detectadas. **Ninguna prueba usa la red ni gasta dinero**: servidor HTTP simulado.
+- **F1.1 — Falla cerrado en todo:** sin configuración (`no_config`), sin poder leer el gasto (`budget_unknown`), sin poder registrar el
+  uso (`usage_not_recorded`), proveedor no habilitado, contrato de encargo ausente en `production`, capacidad no soportada, modelo
+  servido fuera de la lista, salida que no cumple el esquema. El mensaje de una excepción del proveedor nunca se propaga (puede
+  llevar datos del prompt) y el registro de uso **no guarda contenido de mensajes ni respuestas**.
+- **F1.1 — Error corregido en código de F0:** `dayStartMadrid` (inicio del día para el presupuesto, CG-04) restaba horas de reloj y se
+  equivocaba **una hora los dos días del año con cambio de hora**. Se reescribió por bisección sobre el reloj local, se movió a
+  `packages/core` y se probó con los días 29-mar-2026 (23 h) y 25-oct-2026 (25 h).
+- **F1.1 — Qué NO está verificado (necesita la clave `OPENROUTER_API_KEY` y una prueba de contrato real, con gasto aprobado):**
+  (1) que el modelo servido llegue como `anthropic/claude-opus-5.5` o con `[1m]` (`allowedModels` admite ambos); (2) que
+  `provider.require_parameters`/`data_collection` no dejen la ruta sin proveedor disponible para ese modelo (si fuera así, saldría
+  `unavailable`, no un contacto indebido); (3) **el parámetro de esfuerzo**: la documentación de OpenRouter lo expone como `reasoning`,
+  pero en la API directa Opus 5.5 rechaza `budget_tokens`; por eso **`effort` está guardado y no se envía**; (4) que un esquema de
+  `z.toJSONSchema` cumpla el modo estricto; (5) que `usage.cost` («créditos») equivalga a USD: `usd_to_eur = 1` sobrestima el gasto
+  hasta tener un cambio real; (6) el camino de la región UE (`eu.openrouter.ai`), que depende de D-16; (7) los límites de peticiones.
+- **F1.1 — Rutas de Haiku** (`inbound.classify`, `voice.dialog`) están sembradas con `anthropic`, que ni está habilitado ni
+  implementado: devuelven `provider_disabled` hasta F5–F6, por diseño.
+- **F1.1 — Coste desconocido:** si ni el proveedor ni la tabla de precios dan coste, se registra 0 con `costSource: 'unknown'`. Es el
+  único hueco por el que el gasto podría no contar contra el presupuesto; se vigilará con un indicador en el panel (F1.4/F1.9).
 
 ---
 

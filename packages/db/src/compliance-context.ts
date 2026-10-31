@@ -1,5 +1,5 @@
 import {
-  holidaysAround, normalizeEmail, type Channel, type CheckInput, type ComplianceContext, type ConsentRow,
+  dayStartMadrid, holidaysAround, normalizeEmail, type Channel, type CheckInput, type ComplianceContext, type ConsentRow,
   type PriorAttempt, type SuppressionRow,
 } from '@turnosala/core';
 import type pg from 'pg';
@@ -95,15 +95,6 @@ async function loadBudget(db: Db, provider: string | undefined, limits: Record<s
     [provider, dayStartMadrid(at)],
   );
   return { spentTodayEur: Number((r.rows[0] as Row | undefined)?.spent ?? 0), limitEur: limits[provider] ?? null };
-}
-
-/** Inicio (UTC) del día local en Europe/Madrid que contiene `at`. */
-export function dayStartMadrid(at: Date): Date {
-  const f = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
-  const p: Record<string, string> = {};
-  for (const x of f.formatToParts(at)) p[x.type] = x.value;
-  const sinceMidnightMs = ((Number(p.hour) * 60 + Number(p.minute)) * 60 + Number(p.second)) * 1000;
-  return new Date(at.getTime() - sinceMidnightMs - (at.getTime() % 1000));
 }
 
 export async function loadContext(db: Db, input: CheckInput, now: Date): Promise<ComplianceContext> {

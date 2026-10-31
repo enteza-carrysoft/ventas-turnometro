@@ -1,0 +1,4 @@
+{
+  "name": "x",
+  "dependencies": { "@anthropic-ai/sdk": "^0.100.0", "zod": "^4.0.0" }
+}

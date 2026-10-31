@@ -1,0 +1,3 @@
+import OpenAI from 'openai';
+
+export const client = new OpenAI({ baseURL: 'https://example.invalid/v1' });

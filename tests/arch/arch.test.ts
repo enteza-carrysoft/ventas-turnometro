@@ -39,6 +39,13 @@ describe('T-ARQ — SDK de contacto solo en packages/connectors; salida solo des
       ['letters-sdk-import.ts.txt', 'packages/ai/src/carta.ts', 'lob'],
       ['outbound-from-crm.ts.txt', 'packages/crm/src/enviar.ts', '@turnosala/connectors/outbound'],
       ['package-json-sdk.json.txt', 'apps/web/package.json', 'twilio'],
+      // T-ARQ-LLM (REQ-LLM-01): ningún SDK ni URL de un proveedor de LLM fuera de packages/ai
+      ['llm-anthropic-sdk-import.ts.txt', 'packages/crm/src/ia.ts', '@anthropic-ai/sdk'],
+      ['llm-openai-import.ts.txt', 'apps/worker/src/ia.ts', 'openai'],
+      ['llm-openrouter-url.ts.txt', 'packages/content/src/ia.ts', 'openrouter.ai'],
+      ['llm-openrouter-eu-url.ts.txt', 'apps/web/src/lib/ia.ts', 'openrouter.ai'],
+      ['llm-anthropic-url.ts.txt', 'packages/contact/src/ia.ts', 'api.anthropic.com'],
+      ['llm-package-json.json.txt', 'packages/crm/package.json', '@anthropic-ai/sdk'],
     ];
     it.each(cases)('%s colocado en %s → violación de %s', (file, asPath, module) => {
       const v = findViolations([{ path: asPath, content: fixture(file) }]);
@@ -53,6 +60,16 @@ describe('T-ARQ — SDK de contacto solo en packages/connectors; salida solo des
         expect(findViolations([{ path: 'packages/connectors/src/x.ts', content: fixture(f) }]), f).toEqual([]);
       }
       expect(findViolations([{ path: 'packages/connectors/package.json', content: fixture('package-json-sdk.json.txt') }])).toEqual([]);
+    });
+    it('T-ARQ-LLM: los SDK y las URL de LLM dentro de packages/ai', () => {
+      for (const f of ['llm-anthropic-sdk-import.ts.txt', 'llm-openai-import.ts.txt', 'llm-openrouter-url.ts.txt', 'llm-openrouter-eu-url.ts.txt', 'llm-anthropic-url.ts.txt']) {
+        expect(findViolations([{ path: 'packages/ai/src/providers/x.ts', content: fixture(f) }]), f).toEqual([]);
+      }
+      expect(findViolations([{ path: 'packages/ai/package.json', content: fixture('llm-package-json.json.txt') }])).toEqual([]);
+    });
+    it('T-ARQ-LLM: mencionar un proveedor en un comentario no es una violación', () => {
+      const content = '// la pasarela habla con https://openrouter.ai y con api.anthropic.com\nexport const x = 1;\n';
+      expect(findViolations([{ path: 'apps/web/src/ok.ts', content }])).toEqual([]);
     });
     it('importar la salida desde packages/contact', () => {
       expect(findViolations([{ path: 'packages/contact/src/execute.ts', content: fixture('outbound-from-crm.ts.txt') }])).toEqual([]);
