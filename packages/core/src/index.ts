@@ -5,3 +5,6 @@ export * from './scoring/scoring.js';
 export * from './normalize/normalize.js';
 export * from './dedupe/dedupe.js';
 export * from './verify/verify.js';
+export * from './extraction/redact.js';
+export * from './extraction/extraction.js';
+export * from './extraction/prompt.js';

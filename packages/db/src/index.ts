@@ -13,3 +13,4 @@ export { ingestCandidate, type IngestCandidate, type IngestResult } from './inge
 export { importTurnosalaCustomers, type CustomerImportResult } from './customers.js';
 export { parseCsv } from './csv.js';
 export { annotateVerification, type VerificationResults } from './verification.js';
+export { saveEnrichment, type SaveEnrichmentOptions, type SaveEnrichmentResult } from './enrichment.js';

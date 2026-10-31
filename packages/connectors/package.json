@@ -4,5 +4,10 @@
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
-  "types": "./src/index.ts"
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@turnosala/core": "*",
+    "cheerio": "^1.2.0",
+    "robots-parser": "^3.0.1"
+  }
 }

@@ -4,5 +4,12 @@
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
-  "types": "./src/index.ts"
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@turnosala/ai": "*",
+    "@turnosala/connectors": "*",
+    "@turnosala/core": "*",
+    "@turnosala/db": "*",
+    "pg": "^8.23.1"
+  }
 }
