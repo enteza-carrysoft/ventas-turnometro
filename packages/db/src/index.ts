@@ -20,3 +20,7 @@ export {
 } from './research.js';
 export { saveSegmentDrafts, approveSegment, editSegment, retireSegment, type Actor as SegmentActor, type SegmentPatch } from './segments.js';
 export { importTerritories, listTerritories, saveSizing, type TerritoryImportResult, type TerritoryRow, type SaveSizingInput } from './territories.js';
+export {
+  listQueue, getCard, exportApprovedCsv, reviewProspect, correctField, bulkApprove, REVIEWABLE,
+  type Card, type QueueItem, type Reviewer, type ReviewInput, type ReviewResult, type CorrectInput, type CorrectResult, type BulkResult,
+} from './review.js';

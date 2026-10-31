@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { currentActor } from '../lib/actor.js';
 import { getServer } from '../lib/server.js';
 import { KillSwitchControl } from './kill-switch-control.js';
+import { Nav } from './nav.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,8 @@ export default async function PanelPage() {
         <span data-testid="usuario">{actor.name} · {actor.role ? ROLE_LABEL[actor.role] : 'sin rol'}</span>
       </header>
 
+      <Nav />
+
       <section aria-label="Estado del sistema" style={{ display: 'grid', gap: 8 }}>
         <p data-testid="modo" style={{ margin: 0, padding: 12, borderRadius: 6, background: mode === 'production' ? '#fde2e2' : '#fff4cc' }}>
           Modo: <strong>{mode === 'production' ? 'PRODUCCIÓN' : 'SANDBOX (solo contactos de prueba)'}</strong>
@@ -40,7 +43,7 @@ export default async function PanelPage() {
         <KillSwitchControl enabled={kill} canEdit={actor.role === 'admin'} />
       </section>
 
-      <p style={{ color: '#555' }}>Panel mínimo de la fase F0. Fichas, revisión, campañas y CRM llegan en las fases siguientes.</p>
+      <p style={{ color: '#555' }}>Fichas y revisión disponibles; campañas y CRM llegan en las fases siguientes.</p>
     </main>
   );
 }

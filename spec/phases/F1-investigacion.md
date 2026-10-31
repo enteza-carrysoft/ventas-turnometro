@@ -166,6 +166,24 @@ aprobación expresa del gasto (P6.2).
   registrable se fusionan; el nombre muy parecido a un cliente bloquea aunque sea otra empresa (queda visible con motivo para revisión).
   Los adaptadores reales de HTTP (con `robots.txt` y 1 req/s) y de DNS para `checkWebsite`/`checkEmailMx` se escriben con el rastreador (F1.6);
   la clasificación de emails genéricos/personales (REQ-ENR-03) también va en F1.6.
+- **F1.9 completada salvo mapa y canales (31/10/2026)** — `core/review` (muestreo y CSV seguro), `db/review` (cola, ficha, aprobar/descartar/bloquear, corregir, aprobación
+  en bloque, exportación), `apps/web` (rutas `/api/fichas/*` y `/api/segmentos/*`, pantallas `/fichas`, `/fichas/[id]`, `/segmentos`) y 9 e2e nuevos. **Decisiones
+  mías (revisables):** (1) **sin Tailwind ni shadcn/ui por ahora**: el panel sigue con estilos en línea; una librería de UI no aporta a ningún criterio de aceptación de
+  F1.9 y se introducirá cuando la interfaz crezca (F2). (2) Revisar (aprobar, descartar, bloquear, corregir, aprobar en bloque, aprobar/retirar segmentos) exige rol
+  `marketing`/`admin`; la comprobación está en servidor (origen exacto, JSON, sesión y rol) **y** otra vez en la capa de BD (defensa en profundidad). `sales`, `auditor` y
+  `voice` no revisan; pueden exportar, salvo `voice`. (3) **Aprobar no contacta con nadie**: probado con e2e y test de BD (cuentan `contact_attempts`, `consents`,
+  `compliance_decisions`, `suppressions` antes y después). (4) **Muestreo de calidad obligatorio**: al aprobar en bloque, una muestra al azar de ≥10 % del lote (mínimo 1,
+  redondeo hacia arriba) NO se aprueba y queda en la cola para revisarla una a una. Un lote de 1 ficha se queda entero para revisión individual. (5) Estados: se revisa
+  `enriched`/`pending_review`; se puede descartar o bloquear también una aprobada (seguridad); bloqueada/descartada/archivada no se reabre. Bloquear guarda
+  `block_reason = «manual: <motivo>»`. (6) Corregir solo nombre, web y sedes; deja una evidencia `observed` con origen `revision-manual://<usuario>` y
+  `extractor_version = manual-review`, y la auditoría. Una web con dominio ya existente se rechaza (`domain_taken`). (7) **Exportación CSV** solo de fichas `approved`,
+  **sin teléfonos ni emails**; autónomos y forma jurídica desconocida (tratada como autónomo) salen **sin nombre, web ni dominio**; las celdas que empiezan por `= + - @`
+  se neutralizan contra la inyección de fórmulas de Excel. (8) Las pantallas solo enlazan URL `http(s)` (las evidencias manuales usan otro esquema) con
+  `rel="noopener noreferrer"`. (9) `@turnosala/db/web` es un punto de entrada reducido para Next/webpack: el índice completo arrastra `migrate.ts`, que no se
+  puede empaquetar. **Mutaciones:** rol abierto, aprobar desde cualquier estado, sin muestra, exportar todo, autónomos con nombre, fórmulas sin neutralizar, redondeo a la
+  baja, sin comprobación de origen, exportación a `voice` y atajos activos dentro de un campo de texto hacen fallar tests. **Error que cacé:** el primer test del campo de
+  texto usaba `fill()` (no emite teclas) y no detectaba la guarda; ahora usa `pressSequentially`. **Pendiente:** el mapa y los canales permitidos por la puerta (REQ-REV-01)
+  llegan con las campañas (F2), y la edición de segmentos tiene API en BD pero aún no pantalla.
 - **F1.2 completada salvo la pantalla (31/10/2026)** — `core/market/segments` (esquema, prompt, verificación), `db/segments` (borradores, aprobar, editar, retirar) y
   `apps/worker/analyze` (orquestación). Todo con modelo simulado y web simulada; **sin gasto ni red**. **Decisiones mías (revisables):** (1) el modelo solo propone:
   los segmentos nacen en `draft`, el encaje es siempre `inferred` con razonamiento y solo se aceptan las URL que de verdad se rastrearon (CA1; sin ninguna válida, el
