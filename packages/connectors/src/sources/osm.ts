@@ -48,7 +48,10 @@ const q = (s: string): string => {
 
 function buildQuery(ineCode: string, filters: Array<[string, string]>): string {
   const lines = filters.map(([k, v]) => `  nwr[${q(k)}=${q(v)}](area.a);`).join('\n');
-  return `[out:json][timeout:60];\narea["ref:ine"=${q(ineCode)}]->.a;\n(\n${lines}\n);\nout tags center;`;
+  // El código INE del municipio está en OSM como «ine:municipio» (verificado contra Overpass el 31/10/2026); «ref:ine» se mantiene como
+  // alternativa porque el etiquetado varía entre municipios.
+  const code = q(ineCode);
+  return `[out:json][timeout:60];\n(area["ine:municipio"=${code}];area["ref:ine"=${code}];)->.a;\n(\n${lines}\n);\nout tags center;`;
 }
 
 function addressOf(t: Record<string, string>): string | undefined {

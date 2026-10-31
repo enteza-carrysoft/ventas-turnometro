@@ -1,0 +1,62 @@
+# TurnoSala Prospector — entorno LOCAL de pruebas (sandbox). No es producción.
+# Se maneja con `npm run local:init` / `local:up` / `local:down` (ver deploy/LEEME-LOCAL.md); las variables salen de deploy/.env.local (fuera de git).
+#  - APP_MODE está FIJO a sandbox: aquí no hay forma de contactar con nadie, solo de investigar y revisar.
+#  - Base de datos propia (puerto 5434, volumen aparte): no interfiere con la de las pruebas automáticas (5433).
+#  - La IA está apagada (ENRICH_ENABLED=0) hasta que se pone la clave y se ejecuta `npm run local:ai-on`.
+name: turnosala-local
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - pgdata_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    restart: unless-stopped
+    environment:
+      APP_MODE: sandbox
+      PORT: "3000"
+      DATABASE_URL: postgres://app:${APP_PASSWORD}@postgres:5432/prospector
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: http://localhost:3000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.worker
+    restart: unless-stopped
+    environment:
+      APP_MODE: sandbox
+      DATABASE_URL: postgres://app:${APP_PASSWORD}@postgres:5432/prospector
+      ENRICH_ENABLED: ${ENRICH_ENABLED:-0}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-}
+      OSM_ENDPOINT: ${OSM_ENDPOINT:-}
+      WORKER_INTERVAL_MS: ${WORKER_INTERVAL_MS:-15000}
+      WORKER_RESEARCH_TASKS: ${WORKER_RESEARCH_TASKS:-20}
+      WORKER_ENRICH_BATCH: ${WORKER_ENRICH_BATCH:-5}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata_local:

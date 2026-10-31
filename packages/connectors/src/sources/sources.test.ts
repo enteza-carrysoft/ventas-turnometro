@@ -59,7 +59,7 @@ describe('withRetry (REQ-RES-03)', () => {
 });
 
 describe('adaptador OSM / Overpass (REQ-RES-02)', () => {
-  it('consulta el área por ref:ine con los filtros del segmento, con User-Agent identificable, por POST', async () => {
+  it('consulta el área por el código INE (etiqueta «ine:municipio», verificada contra Overpass el 31/10/2026; «ref:ine» como alternativa) con los filtros del segmento, con User-Agent identificable, por POST', async () => {
     const f = vi.fn(async () => json(FIXTURE));
     await adapter(f).a.fetch(req);
     const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit];
@@ -67,7 +67,9 @@ describe('adaptador OSM / Overpass (REQ-RES-02)', () => {
     expect(init.method).toBe('POST');
     expect((init.headers as Record<string, string>)['user-agent']).toBe(UA);
     const q = decodeURIComponent(String(init.body)).replace(/\+/g, ' ');
+    expect(q).toContain('area["ine:municipio"="41091"]');
     expect(q).toContain('area["ref:ine"="41091"]');
+    expect(q).toContain(')->.a;'); // unión de ambas etiquetas
     expect(q).toContain('["healthcare"="dentist"]');
     expect(q).toContain('["shop"="optician"]');
     expect(q).toMatch(/\[timeout:\d+\]/);

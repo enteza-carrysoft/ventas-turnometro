@@ -181,6 +181,17 @@ aprobación expresa del gasto (P6.2).
   tocar los guardianes. **Probado con el proceso real:** el worker arranca, se niega a una segunda instancia (código 1) y, dentro de Docker, escribe su latido y sale con código 0 al parar.
   **Límites:** (a) el enriquecimiento no está atado a un trabajo concreto (su coste no cuenta contra el presupuesto del trabajo, sólo contra el diario de la pasarela); (b) un único worker
   procesa en serie; (c) el worker corre con `tsx` (sin empaquetar); (d) sin mapa ni «siguiente mejor acción» en la ficha todavía.
+- **Entorno local en Docker (31/10/2026)** — `deploy/docker-compose.local.yml`, `scripts/local.ts` (`npm run local:init|up|down|logs|status|ai-on|ai-off|reset`), `scripts/llm-check.ts`
+  (`npm run llm:check`), `scripts/lib/envfile.ts`, `db/sources.ts` (`setSourceActive`, auditado) y `deploy/LEEME-LOCAL.md`. **Decisiones mías (revisables):** (1) proyecto Compose y base de
+  datos **propios** (puerto 5434, volumen aparte): no tocan los de las pruebas automáticas (5433). (2) `APP_MODE=sandbox` **fijo** en el compose local, puertos solo en `127.0.0.1`, secretos generados
+  en `deploy/.env.local` (fuera de git y de Docker) y **nunca impresos**; `init` es repetible y no pisa lo que la persona ya puso (clave de API). (3) La IA arranca **apagada**; `local:ai-on` exige
+  la clave y `llm:check` hace una llamada real mínima antes (valida clave, modelo de la ruta, salida estructurada y coste), sin ejecutarse nunca por su cuenta. (4) `--demo-segment` crea un segmento
+  de prueba **definido a mano y etiquetado como tal** (no del modelo) para poder validar las fuentes sin clave. (5) Activar una fuente (`allowed_sources`) exige actor y motivo y queda en `audit_log`.
+  **Lo que la prueba real destapó:** (a) **error mío**: el adaptador de OpenStreetMap buscaba el municipio por la etiqueta `ref:ine`, programada de memoria; la real es **`ine:municipio`**
+  (comprobado contra Overpass). Con `ref:ine` toda investigación devolvía 0 candidatas sin dar error. Corregido (unión de ambas etiquetas) y el test ahora exige la verificada. Lección: los datos
+  externos no se programan de memoria (CLAUDE.md). (b) **Cobertura**: en Sevilla (dentistas, ópticas, fisioterapia) salieron 17 fichas y **solo 4 con web** (24 %): el enriquecimiento necesita web,
+  así que `web_search` (pendiente de F1.5) deja de ser opcional para encontrar la web del resto. (c) Una consulta a Overpass de un municipio grande tarda **~35–60 s**. **Probado:** init completo en
+  Docker, repetido sin romper nada, inicio de sesión real, pantallas con sesión y redirección sin ella, trabajo real de punta a punta (panel → worker → Overpass → fichas con atribución y fuente).
 - **F1.10 — arnés preparado, medición PENDIENTE (31/10/2026)** — `core/eval/golden` (esquema de anotación y métricas puras), `apps/worker/eval` + `golden-files` (ejecución y carga),
   `npm run golden:snapshot` y `npm run eval:extract` (`--route`, `--model`, `--max-eur`, `--dir`, `--dry-run`) y la guía `tests/golden/README.md`. **No se ha ejecutado ninguna
   evaluación real: no hay anotaciones, clave ni gasto aprobado, y la puerta de ≥ 90 % sigue sin medirse.** **Decisiones mías (revisables):** (1) se anota sobre una
@@ -234,7 +245,7 @@ aprobación expresa del gasto (P6.2).
 - **F1.5 completada solo en parte (31/10/2026)** — `connectors/sources`: contrato común (`SourceAdapter`), reintentos, veto de dominios, caché y adaptador **OSM/Overpass**.
   Fixtures **sintéticas** con la forma documentada de Overpass (no capturas reales); ninguna prueba usa red. **Decisiones mías (revisables):** (1) reintentos
   (RES-03): máx. 3 intentos; 429/406 esperan 30 s (política de Overpass), 5xx/red/tiempo agotado 2 s y 4 s; 403 y respuestas no JSON no se reintentan; al
-  fallar, la tarea queda con el motivo y el trabajo sigue (F1.4). (2) Overpass: consulta por `area["ref:ine"=…]` (el código INE del municipio), POST con
+  fallar, la tarea queda con el motivo y el trabajo sigue (F1.4). (2) Overpass: consulta por `area["ine:municipio"=…]` (corregido el 31/10/2026: antes `ref:ine`; el código INE del municipio), POST con
   `User-Agent` identificable, **un solo hilo** (consultas encadenadas), caché de 24 h por consulta y `out tags center` (no se guardan coordenadas). El
   endpoint es configurable: el público vale para el piloto, **para escalar hace falta servidor propio o de pago** (fuentes.md §3). (3) Cada candidato de OSM lleva
   la evidencia `osm_attribution` («© OpenStreetMap contributors, ODbL 1.0») con enlace a `openstreetmap.org/copyright` (RES-02 CA2). La pregunta jurídica sobre ODbL

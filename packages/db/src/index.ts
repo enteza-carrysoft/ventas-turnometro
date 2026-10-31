@@ -28,3 +28,4 @@ export {
   claimEnrichable, unclaimEnrichable, recordEnrichFailure, enrichBacklog, requestWork, claimRequest, finishRequest, failRequest, listRequests, MAX_ENRICH_ATTEMPTS,
   type EnrichBacklog, type ClaimedRequest, type RequestKind, type RequestRow,
 } from './worker-queue.js';
+export { setSourceActive, type SetSourceResult } from './sources.js';
