@@ -11,6 +11,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@turnosala/connectors": "*",
     "@turnosala/core": "*",
     "@turnosala/db": "*",
     "better-auth": "^1.7.14",

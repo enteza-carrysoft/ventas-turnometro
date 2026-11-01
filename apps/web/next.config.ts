@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 
 const config: NextConfig = {
   // Los paquetes del monorepo se publican como TypeScript: Next los compila.
-  transpilePackages: ['@turnosala/core', '@turnosala/db'],
+  transpilePackages: ['@turnosala/core', '@turnosala/db', '@turnosala/connectors'],
   output: 'standalone',
   outputFileTracingRoot: fileURLToPath(new URL('../..', import.meta.url)),
   poweredByHeader: false,

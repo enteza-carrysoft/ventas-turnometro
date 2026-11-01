@@ -38,3 +38,4 @@ export { currentConsentTexts, createConsentTextDraft, approveConsentText, CONSEN
 export { checkFormRate } from './form-limits.js';
 export { submitDemoRequest, type SubmitInput, type SubmitResult } from './demo-request.js';
 export { openDealForMilestone, pickOwner, DEFAULT_PROPOSED_PLAN, type MilestoneDeal, type MilestoneResult } from './deals.js';
+export { landingSegment, landingFacts, type LandingSegment, type LandingFacts } from './landing.js';

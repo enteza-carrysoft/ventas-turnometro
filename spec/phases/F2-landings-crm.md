@@ -161,3 +161,21 @@ renderiza como HTML (React escapa; sin `dangerouslySetInnerHTML`).
   (índice de una oportunidad abierta, coherencia de cierre, motivo de pérdida, tarea hecha sin fecha, tarea sin ficha ni oportunidad, nota sin límite, importe negativo, FK de demos, FK de propietario)
   hacen fallar tests al quitarlas. La unicidad se prueba también con tres inserciones **simultáneas**.
 
+- **F2.1 (a, b, c) hecha (01/11/2026)** — base pública (0013), envío del formulario (0014), verificador de Turnstile y páginas `/demo/<sector>` y `/c/<token>`. Falta F2.1d (pantalla de textos legales y revisión de la CSP del widget real).
+  **Decisiones mías (revisables):**
+  1. **`inbound_form` queda inactiva** en `allowed_sources`: solo existe por la FK de `prospect_sources`; no es una fuente de investigación y el guardián de F0.4 exige que todas las sembradas lo estén.
+  2. **Una casilla ⇒ varias filas de `consents`** (una por canal, finalidad y destino), porque la puerta compara con igualdad estricta. La casilla de SMS/WhatsApp solo habilita *confirmar* la demo, nunca prospectar.
+  3. **Exclusión antes que consentimiento**: si la persona o la ficha están suprimidas o bloqueadas, no se crea nada (ni consentimiento) y se deja un aviso humano; la respuesta pública es **idéntica** a la de un envío normal, para no revelar quién está en la base.
+  4. **Atribución del primer contacto**: una oportunidad abierta se reutiliza (no se duplica ni retrocede de etapa; solo «Nuevo» sube a «Interesado») y conserva campaña, canal y UTM originales.
+  5. **El token del enlace personal no se guarda en claro en ningún sitio**: ni en `source_url` de consentimientos y solicitudes (lleva un marcador) ni en la auditoría. `Referrer-Policy: no-referrer`, `noindex` y `no-store` en `/c/*` y `/baja/*`.
+  6. **Orden de las defensas** (importa): origen → límite por IP → landing → validación → tiempo mínimo firmado → captcha → textos → registro. El captcha va tras validar para no gastar el token (de un solo uso) en un error de formulario.
+  7. **Secreto del formulario derivado** de `BETTER_AUTH_SECRET` (HMAC con etiqueta fija), no el mismo: firma la marca de tiempo y hace el HMAC de las IP. Sin variable nueva.
+  8. **Captcha de pruebas solo en sandbox**: sin claves de Turnstile, sandbox usa un token fijo sin red ni widget (así el e2e es determinista); en producción faltar las claves es un error. Las claves oficiales de prueba de Cloudflare
+     devuelven otro `hostname`, así que con ellas habría que desactivar la comprobación de hostname (no se hace).
+  9. **CSP con nonce** solo en las páginas públicas (proxy de Next 16, guía consultada el 01/11/2026). `style-src-attr 'unsafe-inline'` permite los atributos `style` del diseño sin abrir hojas en línea. **Sin verificar**: los directivos exactos
+     que necesita el widget real de Turnstile (la documentación de Cloudflare consultada no los lista); se comprueban en un navegador con la clave de pruebas en F2.1d, no en CI.
+  10. Un `X-Forwarded-For` que no es una IP válida se trata como «desconocida» (antes llegaba a una columna `inet` y rompía el envío). **El proxy inverso debe sobrescribir esa cabecera** (anotado para el despliegue, D-01).
+  **Fallos míos que dejo anotados (Auto-Blindaje):** (a) un commit salió con el lint en rojo porque encadené `npm run lint | tail` (el `tail` devuelve siempre éxito); desde ahora la puerta del commit es `npm run ci` con `if`. (b) Un test de concurrencia
+  pasaba aunque quitara el bloqueo de la ficha, porque otro índice único serializaba por su cuenta: hay que forzar que los envíos simultáneos difieran en lo demás (URL distinta). (c) Mis tests compartían IP y chocaban con el límite por IP:
+  el *default* de los tests de rutas con límites debe ser una IP distinta por prueba.
+  **Mutaciones:** formulario/envío 16 + 3, verificador de captcha 8, rutas públicas 15 + 1, proxy y CSP 11: todas detectadas (una era equivalente y está documentada en el commit).

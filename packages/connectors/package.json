@@ -5,6 +5,10 @@
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./turnstile": "./src/turnstile/turnstile.ts"
+  },
   "dependencies": {
     "@turnosala/core": "*",
     "cheerio": "^1.2.0",
