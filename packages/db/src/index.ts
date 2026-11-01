@@ -36,3 +36,5 @@ export {
 export { createPublicToken, resolvePublicToken, revokePublicToken, type TokenKind, type NewToken, type ResolvedToken } from './tokens.js';
 export { currentConsentTexts, createConsentTextDraft, approveConsentText, CONSENT_BOXES, type ConsentBox, type ConsentTextRow, type CurrentTexts, type TextActor } from './consent-texts.js';
 export { checkFormRate } from './form-limits.js';
+export { submitDemoRequest, type SubmitInput, type SubmitResult } from './demo-request.js';
+export { openDealForMilestone, pickOwner, DEFAULT_PROPOSED_PLAN, type MilestoneDeal, type MilestoneResult } from './deals.js';

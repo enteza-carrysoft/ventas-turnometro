@@ -57,7 +57,7 @@ async function writeContacts(client: Client, prospectId: string, v: VerifiedExtr
 }
 
 /** Puntúa con TODAS las señales con evidencia de la ficha, no solo las de esta pasada (REQ-SCO-01). */
-async function rescore(client: Client, prospectId: string, model: ScoringModel): Promise<{ score: number; tier: string }> {
+export async function rescoreProspect(client: Client, prospectId: string, model: ScoringModel = DEFAULT_SCORING_MODEL): Promise<{ score: number; tier: string }> {
   const rows = (await client.query(`select substr(field, 8) as key, source_url from evidences where prospect_id = $1 and field like 'signal:%'`, [prospectId])).rows as Array<{ key: string; source_url: string }>;
   const r = scoreProspect(rows.map((x) => ({ key: x.key, sourceUrl: x.source_url })), model);
   await client.query(
@@ -91,7 +91,7 @@ export async function saveEnrichment(pool: pg.Pool, prospectId: string, v: Verif
     for (const e of evs) ids.set(`${e.field}\u0000${e.value ?? ''}\u0000${e.sourceUrl}`, await writeEvidence(client, prospectId, e, o));
     const contactPoints = await writeContacts(client, prospectId, v, ids);
     await updateProspect(client, prospectId, v, o.fetchedAt);
-    const { score, tier } = await rescore(client, prospectId, o.scoringModel ?? DEFAULT_SCORING_MODEL);
+    const { score, tier } = await rescoreProspect(client, prospectId, o.scoringModel ?? DEFAULT_SCORING_MODEL);
     await client.query('commit');
     return { saved: true, evidences: evs.length, contactPoints, score, tier };
   } catch (e) {

@@ -13,3 +13,4 @@ export * from './market/size.js';
 export * from './review/review.js';
 export * from './eval/golden.js';
 export * from './discovery/match.js';
+export * from './forms/demo-request.js';
