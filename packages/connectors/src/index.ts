@@ -6,3 +6,4 @@ export { createMemoryCache, type QueryCache } from './sources/cache.js';
 export { withRetry, SourceError, MAX_ATTEMPTS as SOURCE_MAX_ATTEMPTS, type SourceErrorKind } from './sources/retry.js';
 export { isVetoedUrl, VETOED_DOMAINS } from './sources/veto.js';
 export type { SourceAdapter, SourceCandidate, SourceEvidence, SourceRequest, SourceResult } from './sources/types.js';
+export { createTurnstileVerifier, SANDBOX_TEST_TOKEN, TURNSTILE_VERIFY_URL, type TurnstileOptions, type TurnstileResult, type TurnstileVerifier } from './turnstile/turnstile.js';
