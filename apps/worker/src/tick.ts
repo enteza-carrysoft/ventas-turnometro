@@ -1,9 +1,13 @@
 import type { LlmRequest, LlmResult, RouteId } from '@turnosala/ai';
 import type { CrawlOptions, CrawlResult } from '@turnosala/connectors';
-import { claimEnrichable, claimRequest, failRequest, finishRequest, recordEnrichFailure, touchWorkerHeartbeat, unclaimEnrichable, type ClaimedRequest } from '@turnosala/db';
+import {
+  claimDiscoverable, claimEnrichable, claimRequest, failRequest, finishRequest, recordDiscoverFailure, recordEnrichFailure, spentTodayOnRoute, touchWorkerHeartbeat, unclaimDiscoverable,
+  unclaimEnrichable, webSearchBudgetEur, type ClaimedRequest, type Discoverable,
+} from '@turnosala/db';
 import type pg from 'pg';
 import { z } from 'zod';
 import { analyzeMarket } from './analyze.js';
+import { discoverWebsite, type DiscoverOutcome } from './discover.js';
 import { enrichProspect, type EnrichOutcome } from './enrich.js';
 import { runUntilIdle, type SourceAdapter } from './research.js';
 
@@ -18,7 +22,9 @@ export interface TickDeps {
   crawl(url: string, opts: CrawlOptions): Promise<CrawlResult>;
   userAgent: string;
   llmEnabled: boolean;
-  limits: { researchTasks: number; enrich: number };
+  /** búsqueda de la web de las candidatas sin web (otro gasto: presupuesto de búsqueda aparte) */
+  discoverEnabled: boolean;
+  limits: { researchTasks: number; enrich: number; discover: number };
   now?: (() => Date) | undefined;
 }
 export interface TickStats {
@@ -26,6 +32,10 @@ export interface TickStats {
   requests: number;
   enriched: number;
   enrichFailed: number;
+  discovered: number;
+  /** buscadas sin encontrar una web que corresponda */
+  notFound: number;
+  discoverFailed: number;
   /** motivo del fallo del sistema que paró el enriquecimiento (p. ej. presupuesto agotado) */
   stoppedBy?: string | undefined;
 }
@@ -58,6 +68,48 @@ async function serveRequests(deps: TickDeps): Promise<number> {
   }
 }
 
+function describeDiscovery(o: DiscoverOutcome | null, error: string): string {
+  if (!o) return error;
+  if (o.status === 'not_found') return `not_found: ${o.reason} (${o.checked} páginas comprobadas)`;
+  if (o.status === 'llm_failed') return `llm_failed: ${o.reason ?? 'desconocido'}`;
+  return o.status === 'rejected' || o.status === 'skipped' ? `${o.status}: ${o.reason}` : o.status;
+}
+
+async function discoverOne(deps: TickDeps, p: Discoverable): Promise<{ outcome: DiscoverOutcome | null; error: string }> {
+  try {
+    return { outcome: await discoverWebsite({ pool: deps.pool, gateway: deps.gateway, crawl: deps.crawl, userAgent: deps.userAgent, now: deps.now }, p), error: '' };
+  } catch (e) {
+    return { outcome: null, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** Busca la web de candidatas sin web, dentro del presupuesto diario de búsqueda; al alcanzarlo para y devuelve los intentos no usados. */
+async function discoverBatch(deps: TickDeps, stats: TickStats): Promise<void> {
+  const at = deps.now?.() ?? new Date();
+  const budget = await webSearchBudgetEur(deps.pool);
+  let spent = await spentTodayOnRoute(deps.pool, 'discovery', at);
+  if (spent >= budget) { stats.stoppedBy ??= 'search_budget'; return; }
+  const items = await claimDiscoverable(deps.pool, { limit: deps.limits.discover, now: at });
+  for (const [i, p] of items.entries()) {
+    const { outcome, error } = await discoverOne(deps, p);
+    spent += outcome && 'costEur' in outcome ? outcome.costEur : 0;
+    if (outcome?.status === 'found') stats.discovered++;
+    else if (outcome?.status === 'llm_failed' && SYSTEMIC.has(outcome.reason ?? '')) {
+      stats.stoppedBy ??= outcome.reason;
+      await unclaimDiscoverable(deps.pool, items.slice(i).map((x) => x.id));
+      return;
+    } else {
+      if (outcome?.status === 'not_found') stats.notFound++; else stats.discoverFailed++;
+      await recordDiscoverFailure(deps.pool, p.id, describeDiscovery(outcome, error));
+    }
+    if (spent >= budget && i < items.length - 1) {
+      stats.stoppedBy ??= 'search_budget';
+      await unclaimDiscoverable(deps.pool, items.slice(i + 1).map((x) => x.id));
+      return;
+    }
+  }
+}
+
 function describeFailure(o: EnrichOutcome): string {
   if (o.status === 'no_pages') return `no_pages (robots: ${o.robots}; omitidas: ${o.skipped.map((s) => s.reason).join(', ') || 'ninguna'})`;
   if (o.status === 'llm_failed') return `llm_failed: ${o.reason ?? 'desconocido'}`;
@@ -86,10 +138,11 @@ async function enrichBatch(deps: TickDeps, stats: TickStats): Promise<void> {
 }
 
 export async function tick(deps: TickDeps): Promise<TickStats> {
-  const stats: TickStats = { research: { done: 0, failed: 0 }, requests: 0, enriched: 0, enrichFailed: 0 };
+  const stats: TickStats = { research: { done: 0, failed: 0 }, requests: 0, enriched: 0, enrichFailed: 0, discovered: 0, notFound: 0, discoverFailed: 0 };
   await touchWorkerHeartbeat(deps.pool, { workerId: deps.workerId, llmEnabled: deps.llmEnabled }, deps.now?.()); // antes de trabajar: un ciclo lento o fallido no debe parecer un worker muerto
   if (deps.llmEnabled) stats.requests = await serveRequests(deps);
   stats.research = await runUntilIdle({ pool: deps.pool, adapters: deps.adapters, workerId: deps.workerId, now: deps.now }, { maxTasks: deps.limits.researchTasks });
+  if (deps.llmEnabled && deps.discoverEnabled) await discoverBatch(deps, stats);
   if (deps.llmEnabled) await enrichBatch(deps, stats);
   return stats;
 }

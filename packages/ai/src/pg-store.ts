@@ -48,7 +48,7 @@ export function createPgLlmStore(pool: pg.Pool): LlmStore {
       // Solo metadatos de uso: nunca el contenido de los mensajes ni de la respuesta (minimización de datos).
       const units = {
         provider: u.provider, requestedModel: u.requestedModel, servedModel: u.servedModel, inputTokens: u.inputTokens, outputTokens: u.outputTokens,
-        cachedInputTokens: u.cachedInputTokens, costSource: u.costSource, status: u.status, reason: u.reason, fallbackUsed: u.fallbackUsed, requestId: u.requestId,
+        cachedInputTokens: u.cachedInputTokens, webSearches: u.webSearches, costSource: u.costSource, status: u.status, reason: u.reason, fallbackUsed: u.fallbackUsed, requestId: u.requestId,
       };
       await pool.query(`insert into usage_costs (provider, route, units, cost_eur, created_at) values ('llm', $1, $2, $3, $4)`, [u.route, JSON.stringify(units), u.costEur, u.at]);
     },

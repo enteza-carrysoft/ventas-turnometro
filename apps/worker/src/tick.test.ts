@@ -38,15 +38,20 @@ const EXTRACT: (url: string) => ExtractionOutput = (url) => ({ fields: [], signa
 const ok = <T>(data: T): LlmResult<T> => ({ status: 'ok', data, provider: 'openrouter', requestedModel: 'm', servedModel: 'm', fallbackUsed: false, usage: { input: 1, output: 1, cachedInput: 0, costEur: 0.1, costSource: 'provider' } });
 const fail = (reason: string): LlmResult<never> => ({ status: 'error', reason: reason as never, provider: null, requestedModel: null, servedModel: null, fallbackUsed: false, usage: { input: 0, output: 0, cachedInput: 0, costEur: 0, costSource: 'unknown' } });
 
+const discoveryReply = (urls: string[], costEur = 0.05): LlmResult<unknown> => ({
+  status: 'ok', text: urls[0] ?? 'NINGUNA', citations: urls.map((url) => ({ url, title: '' })), webSearches: 1, provider: 'openrouter', requestedModel: 'm', servedModel: 'm', fallbackUsed: false,
+  usage: { input: 1, output: 1, cachedInput: 0, costEur, costSource: 'provider' },
+});
+
 interface Setup { deps: TickDeps; run: ReturnType<typeof vi.fn>; crawl: ReturnType<typeof vi.fn> }
-function setup(over: { llm?: boolean; gateway?: (route: string, req: LlmRequest<unknown>) => LlmResult<unknown>; crawl?: (u: string) => CrawlResult; candidates?: SourceCandidate[] } = {}): Setup {
-  const run = vi.fn(async (route: string, req: LlmRequest<unknown>) => (over.gateway ? over.gateway(route, req) : route === 'enrich.extract' ? ok(EXTRACT((req.messages[0]!.content.match(/<pagina url="([^"]+)"/) ?? [])[1] ?? '')) : ok({ segments: [] as MarketAnalysis['segments'] })));
+function setup(over: { llm?: boolean; discover?: boolean; gateway?: (route: string, req: LlmRequest<unknown>) => LlmResult<unknown>; crawl?: (u: string) => CrawlResult; candidates?: SourceCandidate[] } = {}): Setup {
+  const run = vi.fn(async (route: string, req: LlmRequest<unknown>) => (over.gateway ? over.gateway(route, req) : route === 'discovery' ? discoveryReply([]) : route === 'enrich.extract' ? ok(EXTRACT((req.messages[0]!.content.match(/<pagina url="([^"]+)"/) ?? [])[1] ?? '')) : ok({ segments: [] as MarketAnalysis['segments'] })));
   const crawl = vi.fn(async (u: string) => (over.crawl ? over.crawl(u) : CRAWL(u)));
   const fetch = vi.fn(async () => ({ candidates: over.candidates ?? [], costEur: 0 }));
   const gateway = { run: run as unknown as TickDeps['gateway']['run'] };
   return {
     run, crawl,
-    deps: { pool: t.app, workerId: 'w1', adapters: { osm: { fetch } }, gateway, crawl, userAgent: 'TurnoSalaProspectorBot/1.0', llmEnabled: over.llm ?? true, limits: { researchTasks: 10, enrich: 10 }, now: () => AT },
+    deps: { pool: t.app, workerId: 'w1', adapters: { osm: { fetch } }, gateway, crawl, userAgent: 'TurnoSalaProspectorBot/1.0', llmEnabled: over.llm ?? true, discoverEnabled: over.discover ?? false, limits: { researchTasks: 10, enrich: 10, discover: 10 }, now: () => AT },
   };
 }
 const row = async (id: string) => (await t.app.query('select status, enrich_attempts, enrich_error from prospects where id = $1', [id])).rows[0] as { status: string; enrich_attempts: number; enrich_error: string | null };
@@ -142,6 +147,93 @@ describe('tick: investiga y enriquece', () => {
     const s = setup();
     expect((await tick(s.deps)).enriched).toBe(0);
     expect(s.crawl).not.toHaveBeenCalled();
+  });
+});
+
+describe('tick: búsqueda de la web de las candidatas (F1.5)', () => {
+  const noWeb = async (): Promise<{ id: string; phone: string }> => {
+    const c = cand();
+    const id = await lone({ ...c, website: undefined });
+    return { id, phone: c.phone ?? '' };
+  };
+  const dRow = async (id: string) => (await t.app.query('select website, discover_attempts, discover_error from prospects where id = $1', [id])).rows[0] as { website: string | null; discover_attempts: number; discover_error: string | null };
+
+  it('encuentra la web, la verifica en código y la candidata se enriquece en el MISMO ciclo', async () => {
+    await clean();
+    const { id, phone } = await noWeb();
+    const site = 'https://hallada-' + id.slice(-6) + '.es/';
+    const s = setup({
+      discover: true,
+      gateway: (route, req) => (route === 'discovery' ? discoveryReply([site]) : ok(EXTRACT((req.messages[0]!.content.match(/<pagina url="([^"]+)"/) ?? [])[1] ?? ''))),
+      crawl: (u) => ({ robots: 'allowed', skipped: [], pages: [page(u, 'Tenemos 3 consultas\nLlámanos: ' + phone)] }),
+    });
+    const stats = await tick(s.deps);
+    expect(stats).toMatchObject({ discovered: 1, enriched: 1 });
+    expect((await dRow(id)).website).toBe(site);
+    expect(((await t.app.query('select status from prospects where id = $1', [id])).rows[0] as { status: string }).status).toBe('enriched');
+  });
+
+  it('apagada por defecto: sin DISCOVER_ENABLED no se busca ni se gasta aunque la IA esté encendida', async () => {
+    await clean();
+    const { id } = await noWeb();
+    const s = setup({ discover: false });
+    const stats = await tick(s.deps);
+    expect(stats.discovered).toBe(0);
+    expect(s.run.mock.calls.filter((c) => c[0] === 'discovery')).toHaveLength(0);
+    expect((await dRow(id)).discover_attempts).toBe(0);
+  });
+
+  it('si no encuentra una web que corresponda, anota el motivo y la deja para reintentar mucho más tarde', async () => {
+    await clean();
+    const { id } = await noWeb();
+    const s = setup({ discover: true, gateway: (route) => (route === 'discovery' ? discoveryReply(['https://otra-cosa.es/']) : ok({})), crawl: (u) => ({ robots: 'allowed', skipped: [], pages: [page(u, 'Fontanería, Madrid')] }) });
+    const stats = await tick(s.deps);
+    expect(stats).toMatchObject({ discovered: 0, notFound: 1 });
+    expect(await dRow(id)).toMatchObject({ website: null, discover_attempts: 1, discover_error: expect.stringContaining('no_match') });
+  });
+
+  it('presupuesto diario de búsqueda agotado (D-03: 2 €): ni siquiera reclama fichas, y lo dice', async () => {
+    await clean();
+    const { id } = await noWeb();
+    await t.admin.query("insert into usage_costs (provider, route, units, cost_eur, created_at) values ('llm','discovery','{}',2.5,$1)", [AT]);
+    const s = setup({ discover: true });
+    const stats = await tick(s.deps);
+    expect(stats.stoppedBy).toBe('search_budget');
+    expect(s.run.mock.calls.filter((c) => c[0] === 'discovery')).toHaveLength(0);
+    expect((await dRow(id)).discover_attempts).toBe(0);
+    await t.admin.query("delete from usage_costs where route = 'discovery'");
+  });
+
+  it('el gasto de las búsquedas de este ciclo cuenta: al alcanzar el tope se para y se DEVUELVEN los intentos de las fichas sin procesar', async () => {
+    await clean();
+    const a = await noWeb();
+    const b = await noWeb();
+    const c = await noWeb();
+    const s = setup({ discover: true, gateway: (route) => (route === 'discovery' ? discoveryReply([], 2.5) : ok({})) });
+    const stats = await tick(s.deps);
+    expect(stats.stoppedBy).toBe('search_budget');
+    expect(s.run.mock.calls.filter((x) => x[0] === 'discovery')).toHaveLength(1);
+    const attempts = (await Promise.all([a, b, c].map((x) => dRow(x.id)))).map((r) => r.discover_attempts).sort();
+    expect(attempts).toEqual([0, 0, 1]);
+    await t.admin.query("delete from usage_costs where route = 'discovery'");
+  });
+
+  it('fallo del sistema (proveedor deshabilitado): se para y se devuelven los intentos', async () => {
+    await clean();
+    const { id } = await noWeb();
+    const s = setup({ discover: true, gateway: (route) => (route === 'discovery' ? (fail('provider_disabled') as LlmResult<unknown>) : ok({})) });
+    const stats = await tick(s.deps);
+    expect(stats.stoppedBy).toBe('provider_disabled');
+    expect((await dRow(id)).discover_attempts).toBe(0);
+  });
+
+  it('respeta el límite de búsquedas por ciclo', async () => {
+    await clean();
+    for (let i = 0; i < 4; i++) await noWeb();
+    const s = setup({ discover: true });
+    s.deps.limits.discover = 2;
+    await tick(s.deps);
+    expect(s.run.mock.calls.filter((x) => x[0] === 'discovery')).toHaveLength(2);
   });
 });
 

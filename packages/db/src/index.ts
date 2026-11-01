@@ -29,3 +29,7 @@ export {
   type EnrichBacklog, type ClaimedRequest, type RequestKind, type RequestRow,
 } from './worker-queue.js';
 export { setSourceActive, type SetSourceResult } from './sources.js';
+export {
+  claimDiscoverable, unclaimDiscoverable, recordDiscoverFailure, attachWebsite, spentTodayOnRoute, webSearchBudgetEur, MAX_DISCOVER_ATTEMPTS,
+  type Discoverable, type WebsiteEvidence, type AttachResult,
+} from './discovery.js';

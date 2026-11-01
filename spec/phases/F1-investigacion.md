@@ -181,6 +181,21 @@ aprobación expresa del gasto (P6.2).
   tocar los guardianes. **Probado con el proceso real:** el worker arranca, se niega a una segunda instancia (código 1) y, dentro de Docker, escribe su latido y sale con código 0 al parar.
   **Límites:** (a) el enriquecimiento no está atado a un trabajo concreto (su coste no cuenta contra el presupuesto del trabajo, sólo contra el diario de la pasarela); (b) un único worker
   procesa en serie; (c) el worker corre con `tsx` (sin empaquetar); (d) sin mapa ni «siguiente mejor acción» en la ficha todavía.
+- **F1.5 completada: búsqueda de la web de las candidatas (01/11/2026)** — `ai` (capacidad `web_search` en el adaptador y la pasarela), `core/discovery/match`, `db/discovery` (migración 0011),
+  `apps/worker/discover` + integración en el ciclo, `DISCOVER_ENABLED`, `llm:check --search`. **Documentación consultada el 01/11/2026** (OpenRouter: plugin web / herramienta de servidor
+  `openrouter:web_search`). **Decisiones mías (revisables):** (1) se usa la **herramienta de servidor** `openrouter:web_search` con `max_results`, `max_uses` y `excluded_domains`; el
+  proveedor devuelve las fuentes en `annotations` (`url_citation`) y las búsquedas en `usage.server_tool_use_details.web_search_requests`. (2) **No se combina con salida estructurada**:
+  la documentación no dice que se pueda, así que la ruta `discovery` pasa a exigir solo `web_search` (migración 0011, auditada) y la respuesta es texto + citas. (3) **El modelo sugiere,
+  el código decide**: las URL salen solo de las citas del proveedor (no del texto del modelo); se descartan dominios vetados, redes y directorios; se prueban como mucho 3 dominios distintos con
+  el rastreador educado (solo la portada); y la web se acepta solo si el texto contiene un **teléfono** de la ficha o **todas las palabras del nombre + la localidad** (`matchBusiness`, función
+  pura; palabras genéricas del sector no bastan). (4) La web se guarda como **evidencia inferida** con la línea literal (sin nombres de personas ni emails personales, P2.3), la página y cómo se
+  verificó. Un dominio ya usado por otra ficha se rechaza (posible duplicado). (5) Al buscador solo llegan **nombre y localidad**; nunca el teléfono. Un negocio cuyo nombre incluye el de una
+  persona no se manda a buscar. (6) Es **otro gasto**: `DISCOVER_ENABLED=1` (exige `ENRICH_ENABLED=1`), lote por ciclo (`WORKER_DISCOVER_BATCH`, 3 por defecto) y **presupuesto diario de búsqueda
+  (2 €, D-03) medido sobre el gasto real de la ruta**; al alcanzarlo se para y se **devuelven** los intentos sin usar. Reintentos muy espaciados (7 días, máx. 2). (7) `local:ai-on` enciende ambas cosas
+  (`--no-search` solo enriquece). **Mutaciones:** nombre sin localidad, teléfono dentro de un número más largo (delante y detrás), dominios vetados, nombres de personas, más de 3 candidatas, cita sin
+  redactar, sobrescribir una web, sin presupuesto, sin devolver intentos y sin límite por ciclo hacen fallar tests; dos de ellas destaparon huecos de mis propios tests, ya corregidos. **SIN VERIFICAR
+  contra el servicio real** (necesita la clave; `npm run llm:check -- --search` lo comprueba con una llamada): que el modelo configurado admite la herramienta, que `usage.cost` incluye las búsquedas
+  y el coste real por búsqueda, y la tasa de acierto (qué fracción de las 13 candidatas sin web de Sevilla se resuelve). El campo `servedModel` de las respuestas con búsqueda tampoco está probado.
 - **Entorno local en Docker (31/10/2026)** — `deploy/docker-compose.local.yml`, `scripts/local.ts` (`npm run local:init|up|down|logs|status|ai-on|ai-off|reset`), `scripts/llm-check.ts`
   (`npm run llm:check`), `scripts/lib/envfile.ts`, `db/sources.ts` (`setSourceActive`, auditado) y `deploy/LEEME-LOCAL.md`. **Decisiones mías (revisables):** (1) proyecto Compose y base de
   datos **propios** (puerto 5434, volumen aparte): no tocan los de las pruebas automáticas (5433). (2) `APP_MODE=sandbox` **fijo** en el compose local, puertos solo en `127.0.0.1`, secretos generados

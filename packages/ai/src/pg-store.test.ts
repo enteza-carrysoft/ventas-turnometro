@@ -25,7 +25,7 @@ afterEach(async () => {
 
 const row = (over: Partial<UsageRow> = {}): UsageRow => ({
   route: 'enrich.extract', provider: 'openrouter', requestedModel: OPUS, servedModel: OPUS, inputTokens: 100, outputTokens: 20, cachedInputTokens: 0,
-  costEur: 1, costSource: 'provider', status: 'ok', reason: null, fallbackUsed: false, requestId: 'gen-1', at: AT, ...over,
+  costEur: 1, costSource: 'provider', status: 'ok', reason: null, fallbackUsed: false, requestId: 'gen-1', webSearches: 0, at: AT, ...over,
 });
 
 describe('configuración sembrada por la migración 0006 (ADR-005, D-15, D-03)', () => {

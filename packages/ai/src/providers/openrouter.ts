@@ -1,4 +1,4 @@
-import type { Capability, ErrorReason, LlmProvider, ProviderRequest, ProviderResponse, ProviderUsage } from './types.js';
+import type { Capability, Citation, ErrorReason, LlmProvider, ProviderRequest, ProviderResponse, ProviderUsage } from './types.js';
 
 export interface OpenRouterOptions {
   /** clave de API (de la variable de entorno OPENROUTER_API_KEY); sin valor por defecto (constitución P5.1) */
@@ -35,6 +35,21 @@ function parseUsage(raw: unknown): ProviderUsage {
   };
 }
 
+/** Citas de la búsqueda web: solo anotaciones url_citation con URL http(s); sin duplicados. El modelo no las puede inventar en el texto: vienen del proveedor. */
+function parseCitations(message: Json): Citation[] {
+  const seen = new Set<string>();
+  const out: Citation[] = [];
+  for (const a of Array.isArray(message.annotations) ? message.annotations : []) {
+    const ann = obj(a);
+    if (ann.type !== 'url_citation') continue;
+    const c = obj(ann.url_citation);
+    if (typeof c.url !== 'string' || !/^https?:\/\//i.test(c.url) || seen.has(c.url)) continue;
+    seen.add(c.url);
+    out.push({ url: c.url, title: typeof c.title === 'string' ? c.title : '' });
+  }
+  return out;
+}
+
 function fail(reason: ErrorReason, usage: ProviderUsage = EMPTY_USAGE): ProviderResponse {
   return { status: 'error', reason, servedModel: null, usage, fallbackUsed: false };
 }
@@ -43,10 +58,14 @@ function fail(reason: ErrorReason, usage: ProviderUsage = EMPTY_USAGE): Provider
 function interpret(body: Json, requested: string): ProviderResponse {
   const usage = parseUsage(body.usage);
   const served = typeof body.model === 'string' ? body.model : null;
-  const base = { servedModel: served, usage, fallbackUsed: served !== null && served !== requested, requestId: typeof body.id === 'string' ? body.id : undefined };
-  if (body.error) return { ...base, status: 'error', reason: 'provider_error' };
   const choice = obj((Array.isArray(body.choices) ? body.choices : [])[0]);
   const message = obj(choice.message);
+  const searches = num(obj(obj(body.usage).server_tool_use_details).web_search_requests);
+  const base = {
+    servedModel: served, usage, fallbackUsed: served !== null && served !== requested, requestId: typeof body.id === 'string' ? body.id : undefined,
+    citations: parseCitations(message), webSearches: searches,
+  };
+  if (body.error) return { ...base, status: 'error', reason: 'provider_error' };
   switch (choice.finish_reason) {
     case 'stop': {
       const text = typeof message.content === 'string' ? message.content : '';
@@ -69,6 +88,7 @@ function buildBody(req: ProviderRequest): Json {
     max_tokens: req.maxTokens,
     // Privacidad (constitución P5.6): nunca a proveedores que recojan datos; y los parámetros no soportados NO se ignoran.
     provider: { require_parameters: true, data_collection: 'deny', ...(req.zdr ? { zdr: true } : {}) },
+    ...(req.webSearch ? { tools: [{ type: 'openrouter:web_search', parameters: { max_results: req.webSearch.maxResults, max_uses: req.webSearch.maxUses, ...(req.webSearch.excludedDomains?.length ? { excluded_domains: req.webSearch.excludedDomains } : {}) } }] } : {}),
     ...(req.jsonSchema ? { response_format: { type: 'json_schema', json_schema: { name: req.jsonSchema.name, strict: true, schema: req.jsonSchema.schema } } } : {}),
   };
 }
@@ -85,7 +105,7 @@ export function createOpenRouterProvider(opts: OpenRouterOptions): LlmProvider {
     'http-referer': opts.siteUrl ?? 'https://go.turnosala.com',
     'x-title': opts.appTitle ?? 'TurnoSala Prospector',
   };
-  const capabilities: ReadonlySet<Capability> = new Set<Capability>(['structured_output', 'prompt_cache']);
+  const capabilities: ReadonlySet<Capability> = new Set<Capability>(['structured_output', 'prompt_cache', 'web_search']);
 
   async function once(req: ProviderRequest): Promise<{ http: number; body: Json; retryAfterMs: number | null } | 'network'> {
     try {

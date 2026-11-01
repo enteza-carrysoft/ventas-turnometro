@@ -42,6 +42,7 @@ const SPEC: KeySpec[] = [
   { key: 'OPENROUTER_API_KEY', value: '', comment: 'Pon aquí tu clave de OpenRouter (la creas tú; nunca la pegues en el chat) y ejecuta «npm run local:ai-on»' },
   { key: 'OPENROUTER_BASE_URL', value: '' },
   { key: 'ENRICH_ENABLED', value: '0', comment: 'Gasto en IA: 0 = apagado. Lo cambia «npm run local:ai-on / local:ai-off»' },
+  { key: 'DISCOVER_ENABLED', value: '0', comment: 'Búsqueda de la web de las candidatas sin web (gasto aparte, presupuesto de búsqueda). Lo cambia local:ai-on' },
 ];
 
 const say = (m: string): void => console.log(m);
@@ -96,6 +97,28 @@ async function setupDatabase(env: string): Promise<void> {
   const applied = await migrate(migrator);
   await migrator.end();
   say(applied.length ? `  Migraciones aplicadas: ${applied.length}.` : '  Base de datos al día.');
+}
+
+/** Aplica las migraciones pendientes (repetible): al actualizar el código la base debe quedar al día antes de arrancar el worker. */
+async function migrateOnly(env: string): Promise<void> {
+  const migrator = new pg.Pool({ connectionString: dbUrl('migrator', need(env, 'MIGRATOR_PASSWORD'), DB_NAME) });
+  try {
+    const applied = await migrate(migrator);
+    if (applied.length) say(`  Migraciones aplicadas: ${applied.join(', ')}`);
+  } finally {
+    await migrator.end();
+  }
+}
+
+async function up(): Promise<void> {
+  assertDocker();
+  if (compose(['up', '-d', 'postgres']).status !== 0) die('No se pudo arrancar PostgreSQL.');
+  const env = readEnv();
+  const adminUrl = dbUrl('postgres', need(env, 'POSTGRES_PASSWORD'), 'postgres');
+  await waitFor('Postgres', async () => { const c = new pg.Client({ connectionString: adminUrl }); await c.connect(); await c.end(); return true; }, 60);
+  await migrateOnly(env);
+  if (compose(['up', '-d', '--build']).status !== 0) die('No se pudo arrancar.');
+  say(`En marcha: ${WEB_URL}`);
 }
 
 async function seedDemoSegment(pool: pg.Pool): Promise<void> {
@@ -172,7 +195,7 @@ async function status(): Promise<void> {
   say(compose(['ps'], { capture: true }).out.trim() || 'Nada en marcha.');
   const webOk = await fetch(`${WEB_URL}/login`).then((r) => r.ok).catch(() => false);
   say(`Web: ${webOk ? 'responde' : 'NO responde'} (${WEB_URL})`);
-  say(`Clave de OpenRouter: ${getKey(env, 'OPENROUTER_API_KEY') ? 'puesta' : 'sin poner'} · IA: ${getKey(env, 'ENRICH_ENABLED') === '1' ? 'ENCENDIDA' : 'apagada'}`);
+  say(`Clave de OpenRouter: ${getKey(env, 'OPENROUTER_API_KEY') ? 'puesta' : 'sin poner'} · IA: ${getKey(env, 'ENRICH_ENABLED') === '1' ? 'ENCENDIDA' : 'apagada'} · Búsqueda de webs: ${getKey(env, 'DISCOVER_ENABLED') === '1' ? 'ENCENDIDA' : 'apagada'}`);
   const appPw = getKey(env, 'APP_PASSWORD');
   if (!appPw) return;
   const pool = new pg.Pool({ connectionString: dbUrl('app', appPw, DB_NAME) });
@@ -191,9 +214,10 @@ async function status(): Promise<void> {
 function setAi(on: boolean): void {
   const env = readEnv();
   if (on && !getKey(env, 'OPENROUTER_API_KEY')) die(`Primero pon tu clave: edita ${ENV_FILE} y escribe OPENROUTER_API_KEY=<tu clave>. Nunca la pegues en el chat.`);
-  writeFileSync(ENV_FILE, setKey(env, 'ENRICH_ENABLED', on ? '1' : '0'));
+  const search = on && !flag('no-search');
+  writeFileSync(ENV_FILE, setKey(setKey(env, 'ENRICH_ENABLED', on ? '1' : '0'), 'DISCOVER_ENABLED', search ? '1' : '0'));
   if (compose(['up', '-d', 'worker']).status !== 0) die('No se pudo reiniciar el worker.');
-  say(on ? 'IA ENCENDIDA: el worker enriquece candidatas y atiende análisis de mercado (gasto real; tope diario 5 € de IA).' : 'IA apagada.');
+  say(on ? `IA ENCENDIDA: el worker enriquece candidatas y atiende análisis de mercado (gasto real; tope diario 5 €). ${search ? 'Además busca la web de las candidatas sin web (tope diario 2 €).' : 'Búsqueda de webs apagada (--no-search).'}` : 'IA y búsqueda de webs apagadas.');
 }
 
 function reset(): void {
@@ -204,7 +228,7 @@ function reset(): void {
 
 const commands: Record<string, () => void | Promise<void>> = {
   init,
-  up: () => { assertDocker(); if (compose(['up', '-d', '--build']).status !== 0) die('No se pudo arrancar.'); say(`En marcha: ${WEB_URL}`); },
+  up,
   down: () => { compose(['down']); },
   logs: () => { compose(['logs', '-f', '--tail', '100', ...process.argv.slice(3).filter((a) => !a.startsWith('--'))]); },
   status,

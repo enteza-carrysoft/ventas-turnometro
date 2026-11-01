@@ -22,6 +22,19 @@ export interface ProviderRequest {
   maxTokens: number;
   /** cero retención de datos exigida por la ruta */
   zdr: boolean;
+  /** búsqueda web del proveedor; el modelo decide cuándo buscar, dentro de estos límites */
+  webSearch?: WebSearchOptions | undefined;
+}
+
+export interface WebSearchOptions {
+  maxResults: number;
+  maxUses: number;
+  excludedDomains?: string[] | undefined;
+}
+
+export interface Citation {
+  url: string;
+  title: string;
 }
 
 export interface ProviderUsage {
@@ -41,6 +54,10 @@ export interface ProviderResponse {
   usage: ProviderUsage;
   fallbackUsed: boolean;
   requestId?: string | undefined;
+  /** fuentes citadas por la búsqueda web (http/https, sin duplicados) */
+  citations?: Citation[] | undefined;
+  /** búsquedas que el proveedor dice haber hecho (facturables) */
+  webSearches?: number | undefined;
 }
 
 export interface LlmProvider {

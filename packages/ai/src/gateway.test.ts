@@ -254,3 +254,42 @@ describe('pasarela: el gasto nunca se escapa del registro (P6.3)', () => {
     expect(call).not.toHaveBeenCalled();
   });
 });
+
+describe('pasarela de LLM: búsqueda web (ruta discovery)', () => {
+  const askSearch = { messages: [{ role: 'user' as const, content: 'Busca la web de Clínica Sol, Sevilla' }], webSearch: { maxResults: 5, maxUses: 2, excludedDomains: ['linkedin.com'] } };
+  const withSearch = (): Capability[] => ['structured_output', 'prompt_cache', 'web_search'];
+
+  it('pasa la búsqueda al proveedor y devuelve texto, citas y nº de búsquedas; todo queda registrado', async () => {
+    const { store, rows } = memoryStore(config());
+    const { provider, call } = fakeProvider('openrouter', { text: 'Su web es https://clinicasol.es', citations: [{ url: 'https://clinicasol.es/', title: 'Clínica Sol' }], webSearches: 2 }, withSearch());
+    const r = await createGateway({ store, providers: { openrouter: provider }, clock: () => AT }).run('discovery', askSearch);
+    expect(r).toMatchObject({ status: 'ok', text: 'Su web es https://clinicasol.es', citations: [{ url: 'https://clinicasol.es/', title: 'Clínica Sol' }], webSearches: 2 });
+    expect(call.mock.calls[0]![0].webSearch).toEqual({ maxResults: 5, maxUses: 2, excludedDomains: ['linkedin.com'] });
+    expect(rows[0]).toMatchObject({ route: 'discovery', webSearches: 2 });
+  });
+
+  it('si el proveedor no ofrece búsqueda web, la petición con búsqueda se niega y no se llama a nadie (no se degrada en silencio)', async () => {
+    const { store, rows } = memoryStore(config());
+    const { provider, call } = fakeProvider('openrouter', {}, ['structured_output', 'prompt_cache']);
+    const r = await createGateway({ store, providers: { openrouter: provider }, clock: () => AT }).run('enrich.extract', askSearch);
+    expect(r).toMatchObject({ status: 'error', reason: 'capability_unsupported' });
+    expect(call).not.toHaveBeenCalled();
+    expect(rows).toHaveLength(0);
+  });
+
+  it('sin búsqueda en la petición no se envía ninguna al proveedor y no hay citas', async () => {
+    const { store } = memoryStore(config());
+    const { provider, call } = fakeProvider('openrouter', { text: 'ok' }, withSearch());
+    const r = await createGateway({ store, providers: { openrouter: provider }, clock: () => AT }).run('discovery', { messages: [{ role: 'user', content: 'hola' }] });
+    expect(call.mock.calls[0]![0].webSearch).toBeUndefined();
+    expect(r.citations ?? []).toEqual([]);
+  });
+
+  it('una búsqueda que termina mal registra igualmente su coste y sus búsquedas (se facturan aunque falle la salida)', async () => {
+    const { store, rows } = memoryStore(config());
+    const { provider } = fakeProvider('openrouter', { status: 'truncated', text: undefined, webSearches: 3, usage: { input: 10, output: 10, cachedInput: 0, costUsd: 0.04 } }, withSearch());
+    const r = await createGateway({ store, providers: { openrouter: provider }, clock: () => AT }).run('discovery', askSearch);
+    expect(r.status).toBe('truncated');
+    expect(rows[0]).toMatchObject({ status: 'truncated', webSearches: 3, costEur: 0.04 });
+  });
+});

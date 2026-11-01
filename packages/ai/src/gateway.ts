@@ -41,13 +41,14 @@ function parseStructured<T>(text: string, zod: z.ZodType<T>): { ok: true; data: 
 }
 
 /** Comprobaciones previas a la llamada. Devuelve el motivo de rechazo o null si la ruta puede ejecutarse. */
-function gate(cfg: LlmConfig, rc: RouteConfig, adapter: LlmProvider | undefined, needsSchema: boolean): GatewayReason | null {
+function gate(cfg: LlmConfig, rc: RouteConfig, adapter: LlmProvider | undefined, needs: { schema: boolean; search: boolean }): GatewayReason | null {
   if (!cfg.enabledProviders.includes(rc.provider)) return 'provider_disabled';
   if (cfg.appMode === 'production' && cfg.dpaConfirmed[rc.provider] !== true) return 'dpa_missing';
   if (!adapter) return 'provider_unavailable';
   if (!rc.models[rc.provider]) return 'no_model_for_provider';
   const required = new Set<Capability>(rc.requires);
-  if (needsSchema) required.add('structured_output');
+  if (needs.schema) required.add('structured_output');
+  if (needs.search) required.add('web_search');
   for (const c of required) if (!adapter.capabilities.has(c)) return 'capability_unsupported';
   return null;
 }
@@ -67,6 +68,7 @@ async function callProvider(adapter: LlmProvider, rc: RouteConfig, model: string
     return await adapter.call({
       model, system: req.system, messages: req.messages, maxTokens: req.maxTokens ?? rc.maxTokens, zdr: rc.zdr,
       jsonSchema: req.schema ? { name: req.schema.name, schema: jsonSchemaOf(req.schema.zod) } : undefined,
+      webSearch: req.webSearch,
     });
   } catch {
     return null; // el mensaje de la excepción puede llevar datos del prompt: no se propaga
@@ -91,7 +93,7 @@ export function createGateway(deps: GatewayDeps) {
     const rc = cfg.routes[route] as RouteConfig | undefined;
     if (!rc) return stop('no_config');
     const adapter = deps.providers[rc.provider];
-    const refused = gate(cfg, rc, adapter, req.schema !== undefined);
+    const refused = gate(cfg, rc, adapter, { schema: req.schema !== undefined, search: req.webSearch !== undefined });
     if (refused || !adapter) return stop(refused ?? 'provider_unavailable', { provider: rc.provider });
     const model = rc.models[rc.provider] as string;
     const base = { provider: rc.provider, requestedModel: model };
@@ -111,7 +113,7 @@ export function createGateway(deps: GatewayDeps) {
     try {
       await deps.store.recordUsage({
         route, ...base, servedModel: res.servedModel, inputTokens: res.usage.input, outputTokens: res.usage.output, cachedInputTokens: res.usage.cachedInput,
-        ...cost, status: outcome.status, reason: outcome.reason ?? null, fallbackUsed: res.fallbackUsed, requestId: res.requestId ?? null, at,
+        ...cost, status: outcome.status, reason: outcome.reason ?? null, fallbackUsed: res.fallbackUsed, requestId: res.requestId ?? null, webSearches: res.webSearches ?? 0, at,
       });
     } catch {
       return stop('usage_not_recorded', base); // sin registro no hay resultado: el gasto no se puede escapar del presupuesto
@@ -119,6 +121,7 @@ export function createGateway(deps: GatewayDeps) {
     return {
       status: outcome.status, reason: outcome.reason, ...base, servedModel: res.servedModel, fallbackUsed: res.fallbackUsed,
       usage: { input: res.usage.input, output: res.usage.output, cachedInput: res.usage.cachedInput, ...cost },
+      ...(req.webSearch ? { citations: res.citations ?? [], webSearches: res.webSearches ?? 0 } : {}),
       ...(outcome.status === 'ok' ? (req.schema ? { data: outcome.data } : { text: res.text }) : {}),
     };
   }

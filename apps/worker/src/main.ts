@@ -31,15 +31,15 @@ async function main(): Promise<void> {
   const ac = new AbortController();
   for (const sig of ['SIGINT', 'SIGTERM'] as const) process.on(sig, () => { log('stopping', { signal: sig }); ac.abort(); });
   const deps: TickDeps = {
-    pool, workerId: cfg.workerId, userAgent: cfg.userAgent, llmEnabled: cfg.llmEnabled, limits: cfg.limits, gateway: buildGateway(cfg, pool),
+    pool, workerId: cfg.workerId, userAgent: cfg.userAgent, llmEnabled: cfg.llmEnabled, discoverEnabled: cfg.discoverEnabled, limits: cfg.limits, gateway: buildGateway(cfg, pool),
     crawl: (url, opts) => crawlSite(url, opts),
     adapters: { osm: createOsmAdapter({ userAgent: cfg.userAgent, filters: [], endpoint: cfg.osmEndpoint }) },
   };
-  log('started', { workerId: cfg.workerId, llmEnabled: cfg.llmEnabled, intervalMs: cfg.intervalMs, limits: cfg.limits });
+  log('started', { workerId: cfg.workerId, llmEnabled: cfg.llmEnabled, discoverEnabled: cfg.discoverEnabled, intervalMs: cfg.intervalMs, limits: cfg.limits });
   try {
     await runLoop(async () => {
       const s = await tick(deps);
-      if (s.research.done + s.research.failed + s.requests + s.enriched + s.enrichFailed > 0 || s.stoppedBy) log('tick', { ...s });
+      if (s.research.done + s.research.failed + s.requests + s.enriched + s.enrichFailed + s.discovered + s.notFound + s.discoverFailed > 0 || s.stoppedBy) log('tick', { ...s });
     }, { intervalMs: cfg.intervalMs, signal: ac.signal, onError: (e) => log('tick_error', { message: e instanceof Error ? e.message : String(e) }) });
   } finally {
     await singleton.release();

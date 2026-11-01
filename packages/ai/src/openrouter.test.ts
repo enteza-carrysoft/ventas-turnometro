@@ -23,9 +23,9 @@ const req = (over: Record<string, unknown> = {}) => ({
 });
 
 describe('adaptador openrouter: la petición (privacidad y seguridad, REQ-LLM-02/03)', () => {
-  it('declara sus capacidades: salida estructurada y caché de prompt; NO Batch ni búsqueda web todavía', async () => {
+  it('declara sus capacidades: salida estructurada, caché de prompt y búsqueda web; NO Batch', async () => {
     const { provider } = await setup(() => ({ json: completion() }));
-    expect([...provider.capabilities].sort()).toEqual(['prompt_cache', 'structured_output']);
+    expect([...provider.capabilities].sort()).toEqual(['prompt_cache', 'structured_output', 'web_search']);
   });
 
   it('envía clave en Authorization, cabecera de aplicación y siempre require_parameters y data_collection:deny', async () => {
@@ -156,5 +156,52 @@ describe('adaptador openrouter: errores HTTP y reintentos (máx. 3 intentos)', (
   it('una caída de red devuelve error network (sin lanzar) tras reintentar', async () => {
     const provider = createOpenRouterProvider({ apiKey: KEY, baseUrl: 'http://127.0.0.1:1/api/v1', sleep: noSleep });
     expect(await provider.call(req())).toMatchObject({ status: 'error', reason: 'network' });
+  });
+});
+
+describe('adaptador openrouter: búsqueda web (herramienta de servidor, documentación consultada el 01/11/2026)', () => {
+  const search = { maxResults: 5, maxUses: 2, excludedDomains: ['linkedin.com', 'facebook.com'] };
+
+  it('sin búsqueda no envía ninguna herramienta', async () => {
+    const { provider, srv } = await setup(() => ({ json: completion() }));
+    await provider.call(req());
+    expect(srv.requests[0]!.body).not.toHaveProperty('tools');
+  });
+
+  it('con búsqueda añade la herramienta openrouter:web_search con sus límites y dominios excluidos, y mantiene la privacidad', async () => {
+    const { provider, srv } = await setup(() => ({ json: completion() }));
+    await provider.call(req({ webSearch: search }));
+    const b = srv.requests[0]!.body;
+    expect(b.tools).toEqual([{ type: 'openrouter:web_search', parameters: { max_results: 5, max_uses: 2, excluded_domains: ['linkedin.com', 'facebook.com'] } }]);
+    expect(b.provider).toMatchObject({ require_parameters: true, data_collection: 'deny' });
+  });
+
+  it('sin dominios excluidos no envía la lista vacía', async () => {
+    const { provider, srv } = await setup(() => ({ json: completion() }));
+    await provider.call(req({ webSearch: { maxResults: 3, maxUses: 1 } }));
+    expect((srv.requests[0]!.body.tools as Array<{ parameters: Record<string, unknown> }>)[0]!.parameters).toEqual({ max_results: 3, max_uses: 1 });
+  });
+
+  it('devuelve las citas (url_citation) sin duplicados y solo http(s), y el número de búsquedas que informa el proveedor', async () => {
+    const annotations = [
+      { type: 'url_citation', url_citation: { url: 'https://clinicasol.es/', title: 'Clínica Sol', content: 'x', start_index: 0, end_index: 5 } },
+      { type: 'url_citation', url_citation: { url: 'https://clinicasol.es/', title: 'otra vez' } },
+      { type: 'url_citation', url_citation: { url: 'javascript:alert(1)', title: 'malo' } },
+      { type: 'url_citation', url_citation: { title: 'sin url' } },
+      { type: 'otra_cosa', url_citation: { url: 'https://no.es/' } },
+      { type: 'url_citation', url_citation: { url: 'http://otra.es/contacto', title: 'Otra' } },
+    ];
+    const { provider } = await setup(() => ({ json: completion({ annotations, searches: 2 }) }));
+    const r = await provider.call(req({ webSearch: search }));
+    expect(r.status).toBe('ok');
+    expect(r.citations).toEqual([{ url: 'https://clinicasol.es/', title: 'Clínica Sol' }, { url: 'http://otra.es/contacto', title: 'Otra' }]);
+    expect(r.webSearches).toBe(2);
+  });
+
+  it('sin anotaciones ni contadores: lista vacía y 0 búsquedas (no se inventa nada)', async () => {
+    const { provider } = await setup(() => ({ json: completion() }));
+    const r = await provider.call(req({ webSearch: search }));
+    expect(r.citations ?? []).toEqual([]);
+    expect(r.webSearches ?? 0).toBe(0);
   });
 });

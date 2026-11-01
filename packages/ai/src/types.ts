@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CAPABILITIES, PROVIDER_IDS, type Capability, type ErrorReason, type ProviderId } from './providers/types.js';
+import { CAPABILITIES, PROVIDER_IDS, type Capability, type Citation, type ErrorReason, type ProviderId, type WebSearchOptions } from './providers/types.js';
 
 export const ROUTE_IDS = [
   'market.analyze', 'market.size', 'discovery', 'enrich.extract', 'content.generate', 'inbound.classify', 'voice.dialog', 'report.weekly',
@@ -57,6 +57,8 @@ export interface UsageRow {
   reason: string | null;
   fallbackUsed: boolean;
   requestId: string | null;
+  /** búsquedas web que el proveedor dice haber hecho en esta llamada (facturables) */
+  webSearches: number;
   at: Date;
 }
 
@@ -78,6 +80,8 @@ export interface LlmRequest<T> {
   /** salida estructurada: el JSON Schema sale de este esquema Zod y la respuesta se valida con él (P5.4) */
   schema?: { name: string; zod: z.ZodType<T> } | undefined;
   maxTokens?: number | undefined;
+  /** búsqueda web del proveedor, dentro de estos límites; exige la capacidad “web_search” */
+  webSearch?: WebSearchOptions | undefined;
 }
 
 export interface LlmResult<T> {
@@ -90,6 +94,9 @@ export interface LlmResult<T> {
   servedModel: string | null;
   fallbackUsed: boolean;
   usage: { input: number; output: number; cachedInput: number; costEur: number; costSource: 'provider' | 'table' | 'unknown' };
+  /** fuentes que citó la búsqueda web (las da el proveedor, no el modelo) */
+  citations?: Citation[] | undefined;
+  webSearches?: number | undefined;
 }
 
-export type { Capability, ProviderId };
+export type { Capability, Citation, ProviderId, WebSearchOptions };

@@ -45,16 +45,19 @@ export async function startTestServer(handler: (req: Captured, n: number) => Rep
 /** Respuesta típica de /chat/completions de OpenRouter. */
 export function completion(over: {
   content?: string | null; finish?: string; model?: string; cost?: number | null; prompt?: number; completion?: number; cached?: number; error?: unknown;
+  /** anotaciones de la respuesta (citas de la búsqueda web) y nº de búsquedas que informa el proveedor */
+  annotations?: unknown[]; searches?: number;
 } = {}): unknown {
   const body: Record<string, unknown> = {
     id: 'gen-test-1',
     model: over.model ?? 'anthropic/claude-opus-5.5[1m]',
-    choices: [{ finish_reason: over.finish ?? 'stop', message: { role: 'assistant', content: over.content === undefined ? '{"ok":true}' : over.content } }],
+    choices: [{ finish_reason: over.finish ?? 'stop', message: { role: 'assistant', content: over.content === undefined ? '{"ok":true}' : over.content, ...(over.annotations ? { annotations: over.annotations } : {}) } }],
     usage: {
       prompt_tokens: over.prompt ?? 1000,
       completion_tokens: over.completion ?? 200,
       prompt_tokens_details: { cached_tokens: over.cached ?? 0 },
       ...(over.cost === null ? {} : { cost: over.cost ?? 0.0123 }),
+      ...(over.searches === undefined ? {} : { server_tool_use_details: { web_search_requests: over.searches, tool_calls_requested: over.searches, tool_calls_executed: over.searches } }),
     },
   };
   if (over.error) body.error = over.error;

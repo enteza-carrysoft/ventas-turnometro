@@ -4,11 +4,13 @@
 export interface WorkerConfig {
   databaseUrl: string;
   llmEnabled: boolean;
+  /** búsqueda web de la web de las candidatas: otro gasto, aparte del enriquecimiento */
+  discoverEnabled: boolean;
   openRouterApiKey: string | undefined;
   openRouterBaseUrl: string | undefined;
   osmEndpoint: string | undefined;
   intervalMs: number;
-  limits: { researchTasks: number; enrich: number };
+  limits: { researchTasks: number; enrich: number; discover: number };
   userAgent: string;
   workerId: string;
 }
@@ -28,13 +30,15 @@ export function readConfig(env: Env): WorkerConfig {
   if (!databaseUrl) throw new Error('Falta la variable de entorno DATABASE_URL');
   const llmEnabled = env.ENRICH_ENABLED === '1';
   if (llmEnabled && !env.OPENROUTER_API_KEY) throw new Error('ENRICH_ENABLED=1 exige OPENROUTER_API_KEY (variable de entorno)');
+  const discoverEnabled = env.DISCOVER_ENABLED === '1';
+  if (discoverEnabled && !llmEnabled) throw new Error('DISCOVER_ENABLED=1 exige ENRICH_ENABLED=1 (la búsqueda usa la IA)');
   return {
-    databaseUrl, llmEnabled,
+    databaseUrl, llmEnabled, discoverEnabled,
     openRouterApiKey: llmEnabled ? env.OPENROUTER_API_KEY : undefined,
     openRouterBaseUrl: llmEnabled ? env.OPENROUTER_BASE_URL || undefined : undefined,
     osmEndpoint: env.OSM_ENDPOINT || undefined,
     intervalMs: positiveInt(env, 'WORKER_INTERVAL_MS', 15_000, 3_600_000),
-    limits: { researchTasks: positiveInt(env, 'WORKER_RESEARCH_TASKS', 20, 500), enrich: positiveInt(env, 'WORKER_ENRICH_BATCH', 5, 50) },
+    limits: { researchTasks: positiveInt(env, 'WORKER_RESEARCH_TASKS', 20, 500), enrich: positiveInt(env, 'WORKER_ENRICH_BATCH', 5, 50), discover: positiveInt(env, 'WORKER_DISCOVER_BATCH', 3, 20) },
     userAgent: env.CRAWLER_USER_AGENT || 'TurnoSalaProspectorBot/1.0 (+https://turnosala.com/bot)',
     workerId: env.WORKER_ID || `worker-${process.pid}`,
   };
