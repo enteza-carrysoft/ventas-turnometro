@@ -1,6 +1,6 @@
 # F2 — Landings, consentimientos y CRM
 
-**Estado:** BORRADOR (01/11/2026) — pendiente de aprobación del promotor. Sin aprobación no hay código (CLAUDE.md, flujo SDD).
+**Estado:** **APROBADA por el promotor el 01/11/2026 con los valores por defecto** (ver «Lo que necesito del promotor»). En curso.
 **Depende de:** F0 completada, F1 en lo que ya existe (fichas, revisión, trabajos). **No depende** de las claves de IA ni de las anotaciones de F1.10: todo F2 se
 puede construir y probar en sandbox sin gasto en LLM.
 **Puerta de salida: G2** — textos legales de landings y consentimientos aprobados por el asesor (D-04) y recorrido completo hecho por el promotor.
@@ -153,4 +153,11 @@ renderiza como HTML (React escapa; sin `dangerouslySetInnerHTML`).
 
 ## Aprendizajes
 
-*(se rellena durante la ejecución)*
+- **F2.0 completada (01/11/2026)** — migración 0012 (`deal_stages`, `lost_reasons`, `deals`, `tasks`, `notes`, FK `demos.deal_id`) y 13 tests de esquema (`crm-schema.test.ts`).
+  **Decisiones mías (revisables):** (1) **una migración por tarea** en vez de una sola 0012: tokens, textos de consentimiento y límite de formularios llegan con F2.1; la bandeja de personal con F2.5; la
+  vista de línea de tiempo con F2.6; los ajustes de retención con F2.7. Cada tarea cierra con su propio esquema probado. Del mismo modo, los módulos `db` de oportunidades, tareas y notas se escriben
+  en F2.3, F2.5 y F2.6 (donde se usan), no por adelantado. (2) **Restricciones más estrictas que `data-model.sql`**: el cierre es coherente en los dos sentidos (`closed_at` ⇔ etapa ganada o perdida),
+  «perdida» ⇔ lleva motivo, el importe no es negativo, y propietario y responsable son usuarios reales (FK a `user`). (3) `demos.deal_id` ya es FK real. **Mutaciones:** las 9 restricciones
+  (índice de una oportunidad abierta, coherencia de cierre, motivo de pérdida, tarea hecha sin fecha, tarea sin ficha ni oportunidad, nota sin límite, importe negativo, FK de demos, FK de propietario)
+  hacen fallar tests al quitarlas. La unicidad se prueba también con tres inserciones **simultáneas**.
+
