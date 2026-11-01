@@ -40,3 +40,4 @@ export { submitDemoRequest, type SubmitInput, type SubmitResult } from './demo-r
 export { openDealForMilestone, pickOwner, DEFAULT_PROPOSED_PLAN, type MilestoneDeal, type MilestoneResult } from './deals.js';
 export { landingSegment, landingFacts, type LandingSegment, type LandingFacts } from './landing.js';
 export { listConsentTexts, type ConsentTextListing } from './consent-texts.js';
+export { unsubscribeByToken, type UnsubscribeResult, type UnsubscribeScope } from './unsubscribe.js';

@@ -15,3 +15,4 @@ export { currentConsentTexts, createConsentTextDraft, approveConsentText, listCo
 export { resolvePublicToken, type ResolvedToken } from './tokens.js';
 export { checkFormRate } from './form-limits.js';
 export { landingSegment, landingFacts, type LandingSegment, type LandingFacts } from './landing.js';
+export { unsubscribeByToken, type UnsubscribeResult, type UnsubscribeScope } from './unsubscribe.js';

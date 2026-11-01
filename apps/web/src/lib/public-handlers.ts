@@ -27,6 +27,8 @@ const MAX_FORM_AGE_MS = 2 * 3600_000;
 const HOUR = 3600_000;
 
 const hmac = (secret: string, data: string): string => createHmac('sha256', secret).update(data).digest('hex');
+/** La IP del visitante solo se guarda como HMAC (para el límite de envíos), nunca en claro. */
+export const ipHmac = (secret: string, ip: string | null): string => hmac(secret, `ip:${ip ?? 'desconocida'}`);
 
 /** Marca de tiempo firmada que el servidor incrusta al mostrar el formulario: el cliente no puede falsificar cuánto tardó. */
 export function issueFormStamp(secret: string, at: Date): string {
@@ -94,7 +96,8 @@ function utmOf(raw: unknown): Record<string, string> | undefined {
   return out;
 }
 
-async function readBody(req: Request, siteOrigin: string): Promise<Record<string, unknown> | Response> {
+/** Origen exacto (CSRF), JSON y objeto: comprobaciones comunes de las rutas públicas que modifican datos. */
+export async function readPublicJson(req: Request, siteOrigin: string): Promise<Record<string, unknown> | Response> {
   if (req.headers.get('origin') !== siteOrigin) return json(403, { error: 'origen no permitido' });
   if (!req.headers.get('content-type')?.includes('application/json')) return json(415, { error: 'se esperaba JSON' });
   const body: unknown = await req.json().catch(() => null);
@@ -102,11 +105,11 @@ async function readBody(req: Request, siteOrigin: string): Promise<Record<string
 }
 
 export async function handleDemoRequest(req: Request, deps: PublicDeps): Promise<Response> {
-  const body = await readBody(req, deps.siteOrigin);
+  const body = await readPublicJson(req, deps.siteOrigin);
   if (body instanceof Response) return body;
   const now = (deps.now ?? (() => new Date()))();
   const ip = (deps.clientIp ?? defaultClientIp)(req);
-  const rate = await checkFormRate(deps.pool, { ipHmac: hmac(deps.secret, `ip:${ip ?? 'desconocida'}`), kind: 'demo_request', limit: deps.ratePerHour ?? 5, windowMs: HOUR, now });
+  const rate = await checkFormRate(deps.pool, { ipHmac: ipHmac(deps.secret, ip), kind: 'demo_request', limit: deps.ratePerHour ?? 5, windowMs: HOUR, now });
   if (!rate.allowed) return json(429, { error: 'demasiadas_solicitudes' });
   const landing = await resolveLanding(deps, body.landing, now);
   if (!landing) return json(404, { error: 'no_encontrado' });
