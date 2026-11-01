@@ -57,7 +57,8 @@ create table public_form_hits (
 );
 create index public_form_hits_lookup on public_form_hits(ip_hmac, kind, at);
 
--- Las solicitudes de las landings crean fichas cuya fuente es el propio formulario (el interesado facilita sus datos).
+-- Las solicitudes de las landings crean fichas cuya fuente es el propio formulario (el interesado facilita sus datos). Es una fuente de ORIGEN, no de investigación: queda inactiva
+-- (solo hace falta que exista para la clave foránea de prospect_sources) y por eso no se puede usar en trabajos de investigación.
 insert into allowed_sources (id, active, license, storable_fields, terms_url, notes) values
-  ('inbound_form', true, 'Datos facilitados por la propia persona en el formulario (su solicitud y sus consentimientos)', '{}', null, 'Formularios de las landings (F2.1)')
+  ('inbound_form', false, 'Datos facilitados por la propia persona en el formulario (su solicitud y sus consentimientos)', '{}', null, 'Formularios de las landings (F2.1)')
 on conflict (id) do nothing;

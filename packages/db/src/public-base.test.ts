@@ -118,6 +118,13 @@ describe('textos de consentimiento versionados (REQ-CNS-01 CA1, REQ-CNS-02)', ()
   });
 });
 
+describe('fuente inbound_form', () => {
+  it('existe (para la clave foránea de prospect_sources) pero está INACTIVA: no es una fuente de investigación y no puede usarse en trabajos', async () => {
+    const r = (await t.app.query(`select active from allowed_sources where id = 'inbound_form'`)).rows[0] as { active: boolean };
+    expect(r.active).toBe(false);
+  });
+});
+
 describe('límite de envíos por IP (REQ-CNS-01 CA3) sin guardar la IP en claro', () => {
   const opts = { limit: 3, windowMs: 3_600_000 };
 
