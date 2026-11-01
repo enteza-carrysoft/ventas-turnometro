@@ -33,3 +33,6 @@ export {
   claimDiscoverable, unclaimDiscoverable, recordDiscoverFailure, attachWebsite, spentTodayOnRoute, webSearchBudgetEur, MAX_DISCOVER_ATTEMPTS,
   type Discoverable, type WebsiteEvidence, type AttachResult,
 } from './discovery.js';
+export { createPublicToken, resolvePublicToken, revokePublicToken, type TokenKind, type NewToken, type ResolvedToken } from './tokens.js';
+export { currentConsentTexts, createConsentTextDraft, approveConsentText, CONSENT_BOXES, type ConsentBox, type ConsentTextRow, type CurrentTexts, type TextActor } from './consent-texts.js';
+export { checkFormRate } from './form-limits.js';
