@@ -33,7 +33,11 @@ const WEBMAIL = new Set([
 export const isWebmailDomain = (domain: string): boolean => WEBMAIL.has(domain.trim().toLowerCase());
 
 const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
-const text = (v: unknown): string => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim() : '');
+/** Texto de un campo: espacios (también saltos y tabuladores) normalizados y sin caracteres de control. */
+const text = (v: unknown): string => {
+  if (typeof v !== 'string') return '';
+  return [...v.replace(/\s+/g, ' ')].filter((ch) => (ch.codePointAt(0) ?? 0) > 31 && ch !== '\u007f').join('').trim();
+};
 const flag = (v: unknown): boolean => v === true || v === 'on' || v === 'true';
 
 function parseContact(raw: Record<string, unknown>, errors: Record<string, string>): { email: string | null; phone: string | null } {

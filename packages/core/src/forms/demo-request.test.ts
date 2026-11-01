@@ -44,6 +44,10 @@ describe('parseDemoRequest (REQ-CNS-01 CA3: validación de email y teléfono)', 
     expect(parseDemoRequest(ok({ email: `${'a'.repeat(250)}@x.es` }), { hasToken: false }).ok).toBe(false);
   });
 
+  it('tabuladores y saltos de línea cuentan como un espacio (no pegan palabras) y los caracteres de control se eliminan', () => {
+    expect(parseDemoRequest(ok({ name: 'Ana\tPérez\nGómez', company: 'Clínica\r\nSol' }), { hasToken: false })).toMatchObject({ ok: true, data: { name: 'Ana Pérez Gómez', company: 'Clínica Sol' } });
+  });
+
   it('las casillas son explícitas: «on», true y «true» marcan; cualquier otra cosa o la ausencia NO marca (nunca por defecto)', () => {
     const r = parseDemoRequest(ok({ box_email: 'on', box_human_call: true, box_ai_call: 'true', box_sms_whatsapp: 'no' }), { hasToken: false });
     expect(r).toMatchObject({ ok: true, data: { boxes: { email: true, human_call: true, ai_call: true, sms_whatsapp: false } } });
