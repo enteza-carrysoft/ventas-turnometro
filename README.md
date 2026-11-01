@@ -9,7 +9,7 @@ tiempo) y **agenda de demos** con reserva pública, hasta crear la prueba de 30 
 
 **Estado (31/10/2026):** **F0 implementada** (monorepo, BD con tablas de solo inserción, puerta de cumplimiento T-01…T-22,
 `ContactService`, T-ARQ, autenticación, panel con kill switch, `product_facts` v1) · **puerta G0 concedida el 31/10/2026**. **F1 (investigación y fichas) aprobada y en curso**
-(`spec/phases/F1-investigacion.md`): F1.1 (pasarela de LLM), F1.4 (trabajos de investigación reanudables), F1.2 y F1.3 (segmentos y dimensionamiento), F1.9 (cola y ficha de revisión con teclado), F1.5 parcial (OSM), búsqueda de la web de las candidatas (sin verificar con el servicio real), arnés de F1.10 (sin medir), worker y pantalla de investigación (la IA va apagada por defecto: ENRICH_ENABLED), F1.6 (rastreador y extracción verificada), F1.7 (normalización y deduplicación) y F1.8 (puntuación) hechas · 782 tests y 22 e2e en verde.
+(`spec/phases/F1-investigacion.md`): F1.1 (pasarela de LLM), F1.4 (trabajos de investigación reanudables), F1.2 y F1.3 (segmentos y dimensionamiento), F1.9 (cola y ficha de revisión con teclado), F1.5 parcial (OSM), búsqueda de la web de las candidatas (sin verificar con el servicio real), arnés de F1.10 (sin medir), worker y pantalla de investigación (la IA va apagada por defecto: ENRICH_ENABLED), F1.6 (rastreador y extracción verificada), F1.7 (normalización y deduplicación) y F1.8 (puntuación) hechas · 782 tests y 23 e2e en verde.
 
 **Probar en local con Docker:** `deploy/LEEME-LOCAL.md` (`npm run local:init -- tu@correo.es "Tu Nombre" --demo-territories --demo-segment`).
 

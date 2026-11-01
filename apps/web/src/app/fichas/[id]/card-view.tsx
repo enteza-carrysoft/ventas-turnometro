@@ -31,6 +31,13 @@ type Breakdown = Record<string, { weight: number; value: number; points: number;
 
 export function ScoreBox({ p }: { p: Card['prospect'] }) {
   const b = (p.scoreBreakdown ?? {}) as Breakdown;
+  if (p.score === null) {
+    return (
+      <Section title="Puntuación">
+        <p style={{ margin: 0 }} data-testid="puntuacion">Sin puntuar todavía: la puntuación sale de las señales con evidencia y la ficha aún no está enriquecida.</p>
+      </Section>
+    );
+  }
   return (
     <Section title="Puntuación">
       <p style={{ margin: 0 }} data-testid="puntuacion"><strong>{p.score ?? '—'}</strong> / 100 · {p.tier ?? 'sin nivel'} · modelo v{p.scoringVersion ?? '—'}</p>

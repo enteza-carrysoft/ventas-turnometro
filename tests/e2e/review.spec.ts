@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { USERS } from './users.js';
-import { appPool, seedProspect, seedSegment } from './seed.js';
+import { appPool, seedCandidate, seedProspect, seedSegment } from './seed.js';
 
 // Revisión con teclado (F1.9). Better Auth limita el acceso a 3 intentos cada 10 s: el spec anterior termina provocando ese límite a propósito,
 // así que el primer acceso reintenta con espera, y después se reutilizan las sesiones.
@@ -62,6 +62,19 @@ test('la ficha resalta los campos inferidos y muestra fuente, cita, puntuación 
   await expect(inferred).toContainText('dos centros');
   await expect(page.getByTestId('puntuacion')).toContainText('/ 100');
   await expect(page.getByRole('link', { name: /^https:\/\/e2e-\d+\.es\/$/ }).first()).toBeVisible(); // la fuente de cada evidencia es un enlace
+  await page.close();
+});
+
+test('la ficha de una candidata sin enriquecer dice que aún no tiene puntuación, en vez de enseñar «— / 100» y una tabla vacía', async () => {
+  const c = await seedCandidate(pool);
+  const page = await mkt.newPage();
+  await page.goto(`/fichas/${c.id}`);
+  await expect(page.getByTestId('titulo-ficha')).toHaveText(c.name);
+  await expect(page.getByTestId('estado')).toHaveText('Candidata');
+  await expect(page.getByTestId('puntuacion')).toContainText('Sin puntuar todavía');
+  await expect(page.getByTestId('puntuacion')).not.toContainText('/ 100');
+  await expect(page.getByRole('cell', { name: 'Atención simultánea' })).toHaveCount(0); // sin tabla de criterios
+  await expect(page.getByRole('button', { name: 'Aprobar (A)' })).toBeDisabled(); // una candidata no se aprueba
   await page.close();
 });
 

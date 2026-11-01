@@ -31,6 +31,14 @@ export async function seedProspect(pool: pg.Pool, over: { legal?: 'company' | 's
   return { id: r.prospectId, name };
 }
 
+/** Candidata recién creada, sin enriquecer (sin puntuación, sin señales). */
+export async function seedCandidate(pool: pg.Pool): Promise<{ id: string; name: string }> {
+  n += 1;
+  const name = `${word(n + 300)} ${word(n * 17 + 11)} S.L.`;
+  const r = await ingestCandidate(pool, { name, municipality: 'Sevilla', province: 'Sevilla', sourceId: 'osm', externalId: `cand${n}`, sourceUrl: 'https://www.openstreetmap.org/node/1', fetchedAt: AT, extractorVersion: 'e2e', evidences: [] });
+  return { id: r.prospectId, name };
+}
+
 /** Lo mínimo para poder lanzar una investigación: una fuente activa, dos municipios y un segmento aprobado. */
 export async function seedResearchBasics(pool: pg.Pool): Promise<{ segmentName: string }> {
   await pool.query(`update allowed_sources set active = true where id = 'osm'`);
