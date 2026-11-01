@@ -43,3 +43,4 @@ export { listConsentTexts, type ConsentTextListing } from './consent-texts.js';
 export { unsubscribeByToken, type UnsubscribeResult, type UnsubscribeScope } from './unsubscribe.js';
 export { applyOppositionIn } from './opposition.js';
 export { moveDeal, loseDeal, winDeal, assignDeal, type DealActor, type DealResult, type DealFail } from './deal-actions.js';
+export { listDeals, dealTotals, type DealFilters, type DealRow, type StageTotal } from './deal-list.js';
