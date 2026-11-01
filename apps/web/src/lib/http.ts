@@ -26,8 +26,17 @@ export async function guardPost(req: Request, deps: RouteDeps): Promise<{ who: R
   return { who: { userId, role }, body: await req.json().catch(() => null) };
 }
 
+/** POST con sesión de CUALQUIER usuario con cuenta: origen exacto, JSON y sesión. El permiso por rol lo decide la capa de datos (el rol sale de la BD en cada acción). */
+export async function guardSessionPost(req: Request, deps: RouteDeps): Promise<{ userId: string; body: unknown } | Response> {
+  if (req.headers.get('origin') !== deps.siteOrigin) return json(403, { error: 'origen no permitido' });
+  if (!req.headers.get('content-type')?.includes('application/json')) return json(415, { error: 'se esperaba JSON' });
+  const userId = await deps.userId(req);
+  if (!userId) return json(401, { error: 'sin sesión' });
+  return { userId, body: await req.json().catch(() => null) };
+}
+
 const FAIL_STATUS: Record<string, number> = {
   forbidden: 403, not_found: 404, not_reviewable: 409, not_draft: 409, not_approved: 409, domain_taken: 409, conflict: 409,
-  already_approved: 409, version_exists: 409, invalid: 422, reason_required: 422, invalid_value: 422, invalid_field: 422, invalid_patch: 422,
+  already_approved: 409, closed: 409, invalid_stage: 422, invalid_reason: 422, invalid_owner: 422, use_win: 422, use_lose: 422, version_exists: 409, invalid: 422, reason_required: 422, invalid_value: 422, invalid_field: 422, invalid_patch: 422,
 };
 export const fail = (reason: string): Response => json(FAIL_STATUS[reason] ?? 400, { error: reason });
