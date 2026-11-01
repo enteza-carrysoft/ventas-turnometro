@@ -179,3 +179,6 @@ renderiza como HTML (React escapa; sin `dangerouslySetInnerHTML`).
   pasaba aunque quitara el bloqueo de la ficha, porque otro índice único serializaba por su cuenta: hay que forzar que los envíos simultáneos difieran en lo demás (URL distinta). (c) Mis tests compartían IP y chocaban con el límite por IP:
   el *default* de los tests de rutas con límites debe ser una IP distinta por prueba.
   **Mutaciones:** formulario/envío 16 + 3, verificador de captcha 8, rutas públicas 15 + 1, proxy y CSP 11: todas detectadas (una era equivalente y está documentada en el commit).
+- **F2.1d hecha (01/11/2026)** — pantalla `/ajustes/consentimientos` (ver versiones, crear borrador y aprobar; solo `admin` escribe, `marketing` lee) con su API y 6 tests de manejador + 2 e2e. Mutaciones: 4/4 detectadas.
+  **Decisión mía:** la aprobación del asesor la registra un `admin` en la herramienta (no hay un rol «asesor»): el rastro es la auditoría (`consent_text.approved`) más la inmutabilidad en BD. El e2e de textos corre después del de landing
+  (alfabético) porque aprobar una versión cambia el texto vigente. **Pendiente de F2.1:** probar en un navegador con la clave de pruebas de Turnstile los directivos de CSP del widget real (una vez, fuera de CI).

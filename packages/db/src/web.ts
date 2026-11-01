@@ -11,7 +11,7 @@ export {
 export { enrichBacklog, requestWork, listRequests, type EnrichBacklog, type RequestRow } from './worker-queue.js';
 export { listTerritories, type TerritoryRow } from './territories.js';
 export { submitDemoRequest, type SubmitInput, type SubmitResult } from './demo-request.js';
-export { currentConsentTexts, CONSENT_BOXES, type ConsentBox, type ConsentTextRow, type CurrentTexts } from './consent-texts.js';
+export { currentConsentTexts, createConsentTextDraft, approveConsentText, listConsentTexts, CONSENT_BOXES, type ConsentBox, type ConsentTextRow, type CurrentTexts, type ConsentTextListing } from './consent-texts.js';
 export { resolvePublicToken, type ResolvedToken } from './tokens.js';
 export { checkFormRate } from './form-limits.js';
 export { landingSegment, landingFacts, type LandingSegment, type LandingFacts } from './landing.js';

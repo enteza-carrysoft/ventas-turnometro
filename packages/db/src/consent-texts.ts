@@ -68,3 +68,21 @@ export async function approveConsentText(
   await pool.query(`insert into audit_log (actor, action, entity, entity_id, payload) values ($1,'consent_text.approved','consent_text',$2,$3)`, [actor.userId, id, JSON.stringify({ box: cur.box, version: cur.version })]);
   return { ok: true };
 }
+
+export interface ConsentTextListing {
+  id: string;
+  box: ConsentBox;
+  version: string;
+  text: string;
+  status: 'draft' | 'approved';
+  createdAt: Date;
+  approvedAt: Date | null;
+  approvedBy: string | null;
+}
+
+/** Todas las versiones, para la pantalla de ajustes: por casilla, las más recientes primero. */
+export async function listConsentTexts(pool: pg.Pool): Promise<ConsentTextListing[]> {
+  const rows = (await pool.query('select id, box, version, text, status, created_at, approved_at, approved_by from consent_texts order by box, created_at desc, id desc')).rows as
+    Array<{ id: string; box: ConsentBox; version: string; text: string; status: 'draft' | 'approved'; created_at: Date; approved_at: Date | null; approved_by: string | null }>;
+  return rows.map((r) => ({ id: r.id, box: r.box, version: r.version, text: r.text, status: r.status, createdAt: r.created_at, approvedAt: r.approved_at, approvedBy: r.approved_by }));
+}

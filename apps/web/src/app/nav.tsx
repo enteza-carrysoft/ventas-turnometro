@@ -10,6 +10,7 @@ export function Nav() {
       <Link href="/investigacion" style={linkStyle}>Investigación</Link>
       <Link href="/fichas" style={linkStyle}>Cola de revisión</Link>
       <Link href="/segmentos" style={linkStyle}>Segmentos</Link>
+      <Link href="/ajustes/consentimientos" style={linkStyle}>Textos legales</Link>
       <a href="/api/fichas/export" style={linkStyle}>Exportar fichas aprobadas (CSV)</a>
     </nav>
   );
