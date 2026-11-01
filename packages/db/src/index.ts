@@ -41,3 +41,5 @@ export { openDealForMilestone, pickOwner, DEFAULT_PROPOSED_PLAN, type MilestoneD
 export { landingSegment, landingFacts, type LandingSegment, type LandingFacts } from './landing.js';
 export { listConsentTexts, type ConsentTextListing } from './consent-texts.js';
 export { unsubscribeByToken, type UnsubscribeResult, type UnsubscribeScope } from './unsubscribe.js';
+export { applyOppositionIn } from './opposition.js';
+export { moveDeal, loseDeal, winDeal, assignDeal, type DealActor, type DealResult, type DealFail } from './deal-actions.js';

@@ -16,3 +16,4 @@ export { resolvePublicToken, type ResolvedToken } from './tokens.js';
 export { checkFormRate } from './form-limits.js';
 export { landingSegment, landingFacts, type LandingSegment, type LandingFacts } from './landing.js';
 export { unsubscribeByToken, type UnsubscribeResult, type UnsubscribeScope } from './unsubscribe.js';
+export { moveDeal, loseDeal, winDeal, assignDeal, type DealActor, type DealResult, type DealFail } from './deal-actions.js';

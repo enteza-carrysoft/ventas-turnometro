@@ -89,26 +89,7 @@ export async function applyOpposition(pool: pg.Pool, raw: OppositionInput): Prom
   const c = await pool.connect();
   try {
     await c.query('begin');
-    const res: OppositionResult = { suppressions: 0, withdrawnConsents: 0, cancelledAttempts: 0, cancelledDemos: 0, closedDeals: 0, cancelledTasks: 0 };
-    let domain: string | null = null;
-    if (a.prospectId) {
-      const p = await c.query('select domain from prospects where id = $1 for update', [a.prospectId]);
-      if (!p.rows[0]) throw new Error('ficha no encontrada');
-      domain = ((p.rows[0] as Row).domain as string | null) ?? null;
-      res.suppressions += await suppress(c, 'prospect', a.prospectId, a);
-      if (domain) res.suppressions += await suppress(c, 'domain', domain, a);
-    }
-    if (a.phone) res.suppressions += await suppress(c, 'phone', a.phone, a);
-    if (a.email) res.suppressions += await suppress(c, 'email', a.email.toLowerCase(), a);
-    res.withdrawnConsents = await withdrawConsents(c, a);
-    if (a.prospectId) {
-      res.cancelledAttempts = (await c.query(`update contact_attempts set status = 'cancelled', updated_at = now() where prospect_id = $1 and status = 'planned'`, [a.prospectId])).rowCount ?? 0;
-      Object.assign(res, await closeCrm(c, a.prospectId, a));
-      res.cancelledDemos = (await c.query(`update demos set status = 'cancelled' where prospect_id = $1 and status in ('booked','confirmed')`, [a.prospectId])).rowCount ?? 0;
-      await c.query(`update prospects set status = 'blocked', block_reason = 'opposition', updated_at = now() where id = $1`, [a.prospectId]);
-    }
-    res.cancelledAttempts += await cancelAttemptsTo(c, a); // los de la ficha ya están cancelados: aquí caen solo los de ese destino que cuelguen de otras fichas
-    await c.query(`insert into audit_log (actor, action, entity, entity_id, payload) values ($1,'opposition.apply','prospect',$2,$3)`, [a.actor, a.prospectId ?? null, JSON.stringify({ origin: a.origin, reason: a.reason, ...res })]);
+    const res = await applyOppositionIn(c, a);
     await c.query('commit');
     return res;
   } catch (e) {
@@ -117,4 +98,30 @@ export async function applyOpposition(pool: pg.Pool, raw: OppositionInput): Prom
   } finally {
     c.release();
   }
+}
+
+/** Lo mismo DENTRO de una transacción ya abierta por quien llama (p. ej. perder una oportunidad por oposición): no hace commit ni rollback. */
+export async function applyOppositionIn(c: pg.PoolClient, raw: OppositionInput): Promise<OppositionResult> {
+  const a = inputSchema.parse(raw);
+  const res: OppositionResult = { suppressions: 0, withdrawnConsents: 0, cancelledAttempts: 0, cancelledDemos: 0, closedDeals: 0, cancelledTasks: 0 };
+  let domain: string | null = null;
+  if (a.prospectId) {
+    const p = await c.query('select domain from prospects where id = $1 for update', [a.prospectId]);
+    if (!p.rows[0]) throw new Error('ficha no encontrada');
+    domain = ((p.rows[0] as Row).domain as string | null) ?? null;
+    res.suppressions += await suppress(c, 'prospect', a.prospectId, a);
+    if (domain) res.suppressions += await suppress(c, 'domain', domain, a);
+  }
+  if (a.phone) res.suppressions += await suppress(c, 'phone', a.phone, a);
+  if (a.email) res.suppressions += await suppress(c, 'email', a.email.toLowerCase(), a);
+  res.withdrawnConsents = await withdrawConsents(c, a);
+  if (a.prospectId) {
+    res.cancelledAttempts = (await c.query(`update contact_attempts set status = 'cancelled', updated_at = now() where prospect_id = $1 and status = 'planned'`, [a.prospectId])).rowCount ?? 0;
+    Object.assign(res, await closeCrm(c, a.prospectId, a));
+    res.cancelledDemos = (await c.query(`update demos set status = 'cancelled' where prospect_id = $1 and status in ('booked','confirmed')`, [a.prospectId])).rowCount ?? 0;
+    await c.query(`update prospects set status = 'blocked', block_reason = 'opposition', updated_at = now() where id = $1`, [a.prospectId]);
+  }
+  res.cancelledAttempts += await cancelAttemptsTo(c, a); // los de la ficha ya están cancelados: aquí caen solo los de ese destino que cuelguen de otras fichas
+  await c.query(`insert into audit_log (actor, action, entity, entity_id, payload) values ($1,'opposition.apply','prospect',$2,$3)`, [a.actor, a.prospectId ?? null, JSON.stringify({ origin: a.origin, reason: a.reason, ...res })]);
+  return res;
 }
