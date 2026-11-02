@@ -33,6 +33,8 @@ export interface SourceRequest {
   territory?: { name: string; province: string } | undefined;
   /** pares etiqueta=valor de OpenStreetMap del segmento del trabajo; mandan sobre los de la configuración del adaptador */
   osmFilters?: Array<[string, string]> | undefined;
+  /** qué buscar en fuentes de texto libre (Google Places): el nombre del segmento del trabajo */
+  searchQuery?: string | undefined;
 }
 export interface SourceResult {
   candidates: SourceCandidate[];

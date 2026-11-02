@@ -20,9 +20,10 @@ async function territoryOf(pool: pg.Pool, ineCode: string | null): Promise<{ nam
   return (await pool.query('select name, province from territories where ine_code = $1', [ineCode])).rows[0] as { name: string; province: string } | undefined;
 }
 
-async function osmFiltersOf(pool: pg.Pool, segmentId: string): Promise<Array<[string, string]> | undefined> {
-  const def = (await pool.query('select definition from segments where id = $1', [segmentId])).rows[0] as { definition: { osmFilters?: Array<[string, string]> } } | undefined;
-  return def?.definition.osmFilters?.length ? def.definition.osmFilters : undefined;
+async function segmentOf(pool: pg.Pool, segmentId: string): Promise<{ osmFilters?: Array<[string, string]> | undefined; searchQuery?: string | undefined }> {
+  const row = (await pool.query('select name, definition from segments where id = $1', [segmentId])).rows[0] as { name: string; definition: { osmFilters?: Array<[string, string]> } } | undefined;
+  if (!row) return {};
+  return { ...(row.definition.osmFilters?.length ? { osmFilters: row.definition.osmFilters } : {}), searchQuery: row.name };
 }
 
 const clock = (d: ResearchDeps): Date => (d.now ?? (() => new Date()))();
@@ -45,8 +46,8 @@ async function execute(deps: ResearchDeps, task: ClaimedTask): Promise<'done' | 
   }
   try {
     const territory = await territoryOf(deps.pool, task.ineCode);
-    const osmFilters = await osmFiltersOf(deps.pool, task.segmentId);
-    const res = await adapter.fetch({ sourceId: task.sourceId, ineCode: task.ineCode, cursor: task.cursor, limit: task.remainingBatch, ...(territory ? { territory } : {}), ...(osmFilters ? { osmFilters } : {}) });
+    const segment = await segmentOf(deps.pool, task.segmentId);
+    const res = await adapter.fetch({ sourceId: task.sourceId, ineCode: task.ineCode, cursor: task.cursor, limit: task.remainingBatch, ...(territory ? { territory } : {}), ...segment });
     const created = await ingestUpTo(deps.pool, res.candidates, task.remainingBatch);
     await finishTask(deps.pool, task.id, { candidates: created, costEur: res.costEur, cursor: res.cursor }, clock(deps));
     return 'done';

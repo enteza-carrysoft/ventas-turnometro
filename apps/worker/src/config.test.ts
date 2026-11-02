@@ -36,6 +36,11 @@ describe('readConfig (variables de entorno del worker)', () => {
     for (const bad of ['0', '21', 'x']) expect(() => readConfig({ ...BASE, WORKER_DISCOVER_BATCH: bad })).toThrow(/WORKER_DISCOVER_BATCH/);
   });
 
+  it('la clave de Google Maps se lee si existe (la fuente se activa aparte, en allowed_sources); sin ella no hay adaptador', () => {
+    expect(readConfig({ ...BASE, GOOGLE_MAPS_API_KEY: 'AIza-x' })).toMatchObject({ googleMapsApiKey: 'AIza-x' });
+    expect(readConfig({ ...BASE, GOOGLE_MAPS_API_KEY: '' }).googleMapsApiKey).toBeUndefined();
+  });
+
   it('la clave sin ENRICH_ENABLED no activa nada', () => {
     expect(readConfig({ ...BASE, OPENROUTER_API_KEY: 'k' })).toMatchObject({ llmEnabled: false });
   });

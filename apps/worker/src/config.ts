@@ -9,6 +9,8 @@ export interface WorkerConfig {
   openRouterApiKey: string | undefined;
   openRouterBaseUrl: string | undefined;
   osmEndpoint: string | undefined;
+  /** clave de Google Maps (Places API New); con ella existe el adaptador google_places, que además debe estar activo en allowed_sources */
+  googleMapsApiKey: string | undefined;
   intervalMs: number;
   limits: { researchTasks: number; enrich: number; discover: number };
   userAgent: string;
@@ -37,6 +39,7 @@ export function readConfig(env: Env): WorkerConfig {
     openRouterApiKey: llmEnabled ? env.OPENROUTER_API_KEY : undefined,
     openRouterBaseUrl: llmEnabled ? env.OPENROUTER_BASE_URL || undefined : undefined,
     osmEndpoint: env.OSM_ENDPOINT || undefined,
+    googleMapsApiKey: env.GOOGLE_MAPS_API_KEY?.trim() || undefined,
     intervalMs: positiveInt(env, 'WORKER_INTERVAL_MS', 15_000, 3_600_000),
     limits: { researchTasks: positiveInt(env, 'WORKER_RESEARCH_TASKS', 20, 500), enrich: positiveInt(env, 'WORKER_ENRICH_BATCH', 5, 50), discover: positiveInt(env, 'WORKER_DISCOVER_BATCH', 3, 20) },
     userAgent: env.CRAWLER_USER_AGENT || 'TurnoSalaProspectorBot/1.0 (+https://turnosala.com/bot)',

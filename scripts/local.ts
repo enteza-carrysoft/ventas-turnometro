@@ -3,6 +3,7 @@
 //   PowerShell:
 //     npm run local:init -- tu@correo.es "Tu Nombre" --demo-territories --demo-segment   # primera vez: lo deja todo listo (tarda unos minutos)
 //     npm run local:up | local:down | local:logs | local:status
+//     npm run local:maps-on | local:maps-off   (activa/desactiva Google Maps como fuente; necesita GOOGLE_MAPS_API_KEY)
 //     npm run local:ai-on | local:ai-off                                       # enciende/apaga el gasto en IA (necesita OPENROUTER_API_KEY)
 //     npm run local:reset -- --yes                                             # BORRA la base de datos local
 //
@@ -42,6 +43,7 @@ const SPEC: KeySpec[] = [
   { key: 'OPENROUTER_API_KEY', value: '', comment: 'Pon aquí tu clave de OpenRouter (la creas tú; nunca la pegues en el chat) y ejecuta «npm run local:ai-on»' },
   { key: 'OPENROUTER_BASE_URL', value: '' },
   { key: 'ENRICH_ENABLED', value: '0', comment: 'Gasto en IA: 0 = apagado. Lo cambia «npm run local:ai-on / local:ai-off»' },
+  { key: 'GOOGLE_MAPS_API_KEY', value: '', comment: 'Clave de Google Maps (Places API New), restringida a esa API y con cuota diaria. La creas tú; nunca la pegues en el chat. Luego «npm run local:maps-on»' },
   { key: 'DISCOVER_ENABLED', value: '0', comment: 'Búsqueda de la web de las candidatas sin web (gasto aparte, presupuesto de búsqueda). Lo cambia local:ai-on' },
 ];
 
@@ -195,7 +197,7 @@ async function status(): Promise<void> {
   say(compose(['ps'], { capture: true }).out.trim() || 'Nada en marcha.');
   const webOk = await fetch(`${WEB_URL}/login`).then((r) => r.ok).catch(() => false);
   say(`Web: ${webOk ? 'responde' : 'NO responde'} (${WEB_URL})`);
-  say(`Clave de OpenRouter: ${getKey(env, 'OPENROUTER_API_KEY') ? 'puesta' : 'sin poner'} · IA: ${getKey(env, 'ENRICH_ENABLED') === '1' ? 'ENCENDIDA' : 'apagada'} · Búsqueda de webs: ${getKey(env, 'DISCOVER_ENABLED') === '1' ? 'ENCENDIDA' : 'apagada'}`);
+  say(`Clave de OpenRouter: ${getKey(env, 'OPENROUTER_API_KEY') ? 'puesta' : 'sin poner'} · IA: ${getKey(env, 'ENRICH_ENABLED') === '1' ? 'ENCENDIDA' : 'apagada'} · Búsqueda de webs: ${getKey(env, 'DISCOVER_ENABLED') === '1' ? 'ENCENDIDA' : 'apagada'} · Clave de Google Maps: ${getKey(env, 'GOOGLE_MAPS_API_KEY') ? 'puesta' : 'sin poner'}`);
   const appPw = getKey(env, 'APP_PASSWORD');
   if (!appPw) return;
   const pool = new pg.Pool({ connectionString: dbUrl('app', appPw, DB_NAME) });
@@ -220,6 +222,24 @@ function setAi(on: boolean): void {
   say(on ? `IA ENCENDIDA: el worker enriquece candidatas y atiende análisis de mercado (gasto real; tope diario 5 €). ${search ? 'Además busca la web de las candidatas sin web (tope diario 2 €).' : 'Búsqueda de webs apagada (--no-search).'}` : 'IA y búsqueda de webs apagadas.');
 }
 
+async function setMaps(on: boolean): Promise<void> {
+  const env = readEnv();
+  if (on && !getKey(env, 'GOOGLE_MAPS_API_KEY')) die(`Primero pon tu clave: edita ${ENV_FILE} y escribe GOOGLE_MAPS_API_KEY=<tu clave>. Nunca la pegues en el chat.`);
+  const pool = new pg.Pool({ connectionString: dbUrl('app', need(env, 'APP_PASSWORD'), DB_NAME) });
+  try {
+    const r = await setSourceActive(pool, 'google_places', on, {
+      actor: 'script:local-maps', reason: on ? 'pruebas locales en sandbox: Google Maps como fuente (decisión del promotor 02/11/2026)' : 'desactivada desde el script local',
+    });
+    if (!r.ok) die('No se pudo cambiar la fuente google_places.');
+  } finally {
+    await pool.end();
+  }
+  if (compose(['up', '-d', 'worker']).status !== 0) die('No se pudo reiniciar el worker.');
+  say(on
+    ? 'Google Maps ACTIVADO como fuente: aparece en «Fuentes activas» al lanzar una investigación (gasto real: unos 0,035 € por búsqueda de hasta 20 negocios; 1.000 búsquedas gratis al mes).'
+    : 'Google Maps desactivado como fuente.');
+}
+
 function reset(): void {
   if (!flag('yes')) die('Esto BORRA la base de datos local (fichas, trabajos, usuarios). Repite con --yes si estás seguro.');
   compose(['down', '-v']);
@@ -234,6 +254,8 @@ const commands: Record<string, () => void | Promise<void>> = {
   status,
   'ai-on': () => setAi(true),
   'ai-off': () => setAi(false),
+  'maps-on': () => setMaps(true),
+  'maps-off': () => setMaps(false),
   reset,
 };
 

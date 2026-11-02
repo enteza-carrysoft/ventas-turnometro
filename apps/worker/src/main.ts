@@ -1,5 +1,5 @@
 import { createGateway, createOpenRouterProvider, createPgLlmStore } from '@turnosala/ai';
-import { crawlSite, createOsmAdapter } from '@turnosala/connectors';
+import { crawlSite, createGooglePlacesAdapter, createOsmAdapter } from '@turnosala/connectors';
 import pg from 'pg';
 import { readConfig } from './config.js';
 import { acquireSingleton, runLoop, tick, type TickDeps } from './tick.js';
@@ -33,7 +33,10 @@ async function main(): Promise<void> {
   const deps: TickDeps = {
     pool, workerId: cfg.workerId, userAgent: cfg.userAgent, llmEnabled: cfg.llmEnabled, discoverEnabled: cfg.discoverEnabled, limits: cfg.limits, gateway: buildGateway(cfg, pool),
     crawl: (url, opts) => crawlSite(url, opts),
-    adapters: { osm: createOsmAdapter({ userAgent: cfg.userAgent, filters: [], endpoint: cfg.osmEndpoint }) },
+    adapters: {
+      osm: createOsmAdapter({ userAgent: cfg.userAgent, filters: [], endpoint: cfg.osmEndpoint }),
+      ...(cfg.googleMapsApiKey ? { google_places: createGooglePlacesAdapter({ apiKey: cfg.googleMapsApiKey, userAgent: cfg.userAgent, crawl: (url, opts) => crawlSite(url, opts) }) } : {}),
+    },
   };
   log('started', { workerId: cfg.workerId, llmEnabled: cfg.llmEnabled, discoverEnabled: cfg.discoverEnabled, intervalMs: cfg.intervalMs, limits: cfg.limits });
   try {

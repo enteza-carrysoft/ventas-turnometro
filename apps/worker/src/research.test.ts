@@ -51,6 +51,14 @@ describe('processOne / runUntilIdle (REQ-RES-01)', () => {
     expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ osmFilters: [['healthcare', 'dentist'], ['shop', 'optician']] }));
   });
 
+  it('pasa al adaptador el nombre del segmento como búsqueda (fuentes de texto libre como Google Places)', async () => {
+    const name = ((await t.app.query('select name from segments where id = $1', [segmentId])).rows[0] as { name: string }).name;
+    const fetch = vi.fn(async () => ({ candidates: [], costEur: 0 }));
+    const { jobId } = await createResearchJob(t.app, { segmentId, ineCodes: ['41091'], sourceIds: ['osm'], budgetEur: 5, createdBy: 'm' });
+    await processOne(deps({ fetch }), jobId);
+    expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ searchQuery: name }));
+  });
+
   it('no ingesta más candidatos de los que caben en el lote aunque la fuente devuelva de más', async () => {
     const { jobId } = await createResearchJob(t.app, { segmentId, ineCodes: ['41091'], sourceIds: ['osm'], budgetEur: 5, maxCandidates: 4, createdBy: 'm' });
     const before = await prospects();

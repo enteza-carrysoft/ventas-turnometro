@@ -38,3 +38,13 @@ describe('setSourceActive', () => {
     expect(await setSourceActive(t.app, 'osm', true, { actor: '', reason: 'r' })).toEqual({ ok: false, reason: 'reason_required' });
   });
 });
+
+describe('google_places tras la migración 0017 (REQ-RES-02 CA1)', () => {
+  it('sigue inactiva por defecto, solo admite almacenar place_id y anota las condiciones comprobadas con fecha', async () => {
+    const r = (await t.app.query(`select active, storable_fields, license, terms_url, verified_at, notes from allowed_sources where id = 'google_places'`)).rows[0] as Record<string, unknown>;
+    expect(r).toMatchObject({ active: false, storable_fields: ['place_id'], terms_url: 'https://developers.google.com/maps/documentation/places/web-service/policies' });
+    expect(String(r.license)).toMatch(/place_id/);
+    expect(String(r.notes)).toMatch(/web de la empresa/);
+    expect(r.verified_at).toBeInstanceOf(Date);
+  });
+});

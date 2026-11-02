@@ -30,6 +30,8 @@
     "local:status": "tsx scripts/local.ts status",
     "local:ai-on": "tsx scripts/local.ts ai-on",
     "local:ai-off": "tsx scripts/local.ts ai-off",
+    "local:maps-on": "tsx scripts/local.ts maps-on",
+    "local:maps-off": "tsx scripts/local.ts maps-off",
     "local:reset": "tsx scripts/local.ts reset",
     "llm:check": "tsx scripts/llm-check.ts",
     "golden:snapshot": "tsx scripts/golden-snapshot.ts",

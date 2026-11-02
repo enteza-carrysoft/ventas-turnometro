@@ -142,3 +142,19 @@ Fuentes consultadas (todas el 31/10/2026): sanidad.gob.es (REGCESS); openstreetm
 wiki.openstreetmap.org/wiki/Overpass_API; operations.osmfoundation.org/policies/nominatim; developers.google.com/maps
 (policies de Places); ine.es (manual de la API JSON); hacienda.gob.es (datos abiertos de licitaciones);
 datos.gob.es (catálogo y guía del reutilizador); platform.claude.com (precios).
+
+### 6.1 Actualización del 02/11/2026: Google Places activable (decisión del promotor)
+
+- ✅ **Política de Places** (`…/places/web-service/policies`): «el place ID … está exento de las restricciones de caché; puedes
+  almacenarlo indefinidamente». Atribución: si se muestra contenido de Google sin un mapa de Google, logotipo o texto «Google Maps».
+- ✅ **Text Search (New)**: `POST https://places.googleapis.com/v1/places:searchText`, cabeceras `X-Goog-Api-Key` y `X-Goog-FieldMask`
+  (obligatoria); `textQuery`, `languageCode`, `regionCode`, `pageSize` 1–20, `pageToken`; **máximo 60 resultados** por búsqueda.
+  Niveles de los campos: `places.id` = Essentials ID Only; `displayName` = Pro; **`websiteUri` = Enterprise**.
+- ✅ **Precios** (`…/billing-and-pricing/pricing`): Text Search Enterprise **1.000 peticiones gratis al mes**, después **35 $/1.000**;
+  Pro 5.000 gratis y 32 $/1.000. ⚠️ La página no dice expresamente que se facture por el campo de nivel más alto: el código estima
+  prudentemente 0,035 € por petición sin descontar la franja gratuita.
+- **Diseño (REQ-RES-02 CA1):** máscara mínima `places.id,places.displayName,places.websiteUri,nextPageToken` (sin teléfono, dirección
+  ni reseñas). Google **solo sugiere**: se abre la web con el rastreador educado y la candidata se acepta solo si su nombre (y la
+  localidad) aparece en esa web; la evidencia es la línea literal de la web. Se guarda el `place_id` como identificador externo. Lo que no
+  se confirma no se guarda. ⚠️ El nombre que se guarda es el que Google devuelve una vez **confirmado** en la web de la empresa; no he
+  leído las Condiciones Específicas completas (la página no se dejó descargar): revisarlas antes de producción.

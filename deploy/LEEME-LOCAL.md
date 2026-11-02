@@ -104,3 +104,13 @@ portada con el rastreador educado y la acepta solo si en el texto aparece el **t
 - **Sin señal del worker** — `npm run local:logs -- worker`; reinicia con `npm run local:up`.
 - **Olvidé la contraseña** — está en `deploy/.env.local` (`ADMIN_PASSWORD`).
 - **Quiero empezar de cero** — `npm run local:reset -- --yes` y luego `local:init`.
+
+## Google Maps como fuente (opcional)
+
+1. En https://console.cloud.google.com crea un proyecto con facturación y activa **Places API (New)**.
+2. En **APIs y servicios → Credenciales**, crea una clave de API y **restríngela** a «Places API (New)». En **Cuotas**, pon un tope diario (por ejemplo 200 peticiones).
+3. Escribe la clave en `deploy/.env.local` como `GOOGLE_MAPS_API_KEY=<tu clave>` (nunca en el chat) y ejecuta `npm run local:up` y después `npm run local:maps-on`.
+4. Al lanzar una investigación marca **google_places** en «Fuentes activas». Cada búsqueda es «<nombre del segmento> en <municipio>, <provincia>» y devuelve hasta 60 negocios.
+
+De Google **solo se guarda el identificador del lugar**: la ficha se crea únicamente si el nombre aparece en la web de la empresa, y sus datos salen de esa web.
+Coste: 1.000 búsquedas al mes gratis y luego unos 0,035 € por búsqueda (hasta 20 negocios). `npm run local:maps-off` la desactiva.
