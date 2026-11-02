@@ -1,5 +1,6 @@
 import { createGateway, createOpenRouterProvider, createPgLlmStore } from '@turnosala/ai';
 import { crawlSite, createGooglePlacesAdapter, createOsmAdapter } from '@turnosala/connectors';
+import { touchWorkerHeartbeat } from '@turnosala/db';
 import pg from 'pg';
 import { readConfig } from './config.js';
 import { acquireSingleton, runLoop, tick, type TickDeps } from './tick.js';
@@ -38,6 +39,10 @@ async function main(): Promise<void> {
       ...(cfg.googleMapsApiKey ? { google_places: createGooglePlacesAdapter({ apiKey: cfg.googleMapsApiKey, userAgent: cfg.userAgent, crawl: (url, opts) => crawlSite(url, opts) }) } : {}),
     },
   };
+  // Latido propio cada 30 s: un ciclo largo (p. ej. Google Places + rastreo de 60 webs) tarda minutos y el panel no debe creer que no hay worker.
+  const beat = (): void => { touchWorkerHeartbeat(pool, { workerId: cfg.workerId, llmEnabled: cfg.llmEnabled }).catch((e: unknown) => log('heartbeat_error', { message: e instanceof Error ? e.message : String(e) })); };
+  const beatTimer = setInterval(beat, 30_000);
+  beat();
   log('started', { workerId: cfg.workerId, llmEnabled: cfg.llmEnabled, discoverEnabled: cfg.discoverEnabled, intervalMs: cfg.intervalMs, limits: cfg.limits });
   try {
     await runLoop(async () => {
@@ -45,6 +50,7 @@ async function main(): Promise<void> {
       if (s.research.done + s.research.failed + s.requests + s.enriched + s.enrichFailed + s.discovered + s.notFound + s.discoverFailed > 0 || s.stoppedBy) log('tick', { ...s });
     }, { intervalMs: cfg.intervalMs, signal: ac.signal, onError: (e) => log('tick_error', { message: e instanceof Error ? e.message : String(e) }) });
   } finally {
+    clearInterval(beatTimer);
     await singleton.release();
     await pool.end();
     log('stopped');
