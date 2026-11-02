@@ -7,6 +7,8 @@ Qué incluye: PostgreSQL propio (puerto 5434, no interfiere con las pruebas auto
 
 - Docker Desktop en marcha, Node 22 y `npm install` hecho en la raíz del repositorio.
 - Todos los comandos se ejecutan en PowerShell desde la raíz del repositorio.
+- **Ojo en PowerShell:** cuando un comando lleva `--` (por ejemplo `npm run local:reset -- --yes`), escribe `npm.cmd` en lugar de `npm`
+  (`npm.cmd run local:reset -- --yes`) o pon el `--` entre comillas (`npm run local:reset '--' --yes`). Si no, PowerShell se lo come y la opción no llega.
 
 ## Primera vez
 
@@ -60,7 +62,7 @@ También: ver el estado del worker, pausar/cancelar un trabajo, y los segmentos.
 
        npm run llm:check -- --search
 
-   Debe mostrar citas (las webs que encontró), el número de búsquedas y el coste; compáralo con lo esperado (tokens + unos 0,005–0,007 € por búsqueda).
+   Debe mostrar citas (las webs que encontró), el número de búsquedas y el coste; compáralo con lo esperado (tokens + unos 0,01 $ por búsqueda con GPT-6 Luna).
 5. Enciende la IA: `npm run local:ai-on`. El worker empieza a:
    - enriquecer las candidatas que tienen web,
    - **buscar la web** de las candidatas que no la tienen (en la prueba de Sevilla, 13 de 17) y verificarla en código,

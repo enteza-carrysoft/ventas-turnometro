@@ -86,6 +86,8 @@ leído (los modelos gratuitos: 50/día, o 1.000/día tras comprar ≥ 10 crédit
   «no controla cómo los modelos tratan las entradas»: los proveedores finales también cuentan. **Pregunta para el asesor (D-04/D-16).**
 - Consecuencia de diseño: `data_collection: "deny"` siempre; `zdr: true` donde el modelo lo permita; endpoint UE en producción.
 
+**GPT-6 Luna (comprobado el 02/11/2026 en `https://openrouter.ai/api/v1/models`).** ✅ id `openai/gpt-6-luna` (también `:batch` a mitad de precio y `~openai/gpt-luna-latest`, que no se usa porque cambia solo); contexto 1.050.000; **0,10 $ entrada / 0,50 $ salida por Mtok**, lectura de caché 0,01 $, escritura 0,125 $; por encima de 272.000 tokens de entrada, 0,20 $ / 0,75 $. Búsqueda web **0,01 $ por búsqueda** (más que los 0,005–0,007 € anotados para Opus). Parámetros: `response_format`, `structured_outputs`, `tools`, `tool_choice`, `reasoning`, `reasoning_effort`, `max_tokens`; **no** `temperature` (no la enviamos). ❓ Pendiente con la clave: que el **modelo servido** coincida exactamente con el id (si trae sufijo de fecha, la pasarela lo rechaza con `model_not_allowed` y hay que añadirlo a `allowedModels`) y que la búsqueda devuelva citas `url_citation`: lo comprueba `npm run llm:check` y `npm run llm:check -- --search`.
+
 ## 3. Twilio (voz)
 
 Fuente: `twilio.com/docs/voice/conversationrelay/voice-configuration`, guía regulatoria de España, tarifas de voz. 31/10/2026.

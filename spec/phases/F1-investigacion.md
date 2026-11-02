@@ -128,6 +128,9 @@ aprobación expresa del gasto (P6.2).
 
 ## Aprendizajes
 
+- **Cambio de modelo a GPT-6 Luna (02/11/2026, decisión del promotor)** — migración 0015: `market.analyze`, `market.size`, `discovery` y `enrich.extract` pasan a `openai/gpt-6-luna` (unas 40 veces más barato que Opus 5.5); precios en `llm_prices`; la `effort` sigue sin enviarse. Test en `pg-store.test.ts`. Datos de prueba del entorno local borrados el mismo día.
+- **PowerShell 5.1 se come el `--`** de `npm run <script> -- --opción` (el atajo `npm.ps1`): la opción no llega al script. Funcionan `npm run <script> '--' --opción` y `npm.cmd run <script> -- --opción`. Anotado en `deploy/LEEME-LOCAL.md`.
+
 - **F1.1 completada (31/10/2026)** — `packages/ai`: pasarela (`createGateway`), adaptador `openrouter` (HTTP directo con `fetch`, sin SDK),
   tienda sobre Postgres (`createPgLlmStore`), migración 0006 con las 8 rutas y **T-ARQ-LLM** (escáner de SDK y URL de LLM fuera de
   `packages/ai`, con 6 fixtures de violación y comprobado con una violación real plantada). 299 tests en verde; 8 mutaciones de la

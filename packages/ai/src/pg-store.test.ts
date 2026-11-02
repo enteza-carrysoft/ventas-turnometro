@@ -11,6 +11,7 @@ let t: TestDb;
 let srv: TestServer | undefined;
 const AT = new Date('2026-11-10T10:00:00Z'); // martes 11:00 Madrid
 const OPUS = 'anthropic/claude-opus-5.5[1m]';
+const LUNA = 'openai/gpt-6-luna';
 
 beforeAll(async () => {
   t = await createTestDb();
@@ -43,11 +44,17 @@ describe('configuración sembrada por la migración 0006 (ADR-005, D-15, D-03)',
     }
   });
 
-  it('el modelo de las rutas de investigación es Opus 5.5 con su id de OpenRouter y el servido sin sufijo también se admite', async () => {
+  it('migración 0015: las rutas de análisis e investigación usan GPT-6 Luna (decisión del promotor, 02/11/2026); el contenido sigue en Opus', async () => {
     const cfg = await createPgLlmStore(t.app).loadConfig();
-    expect(cfg.routes['enrich.extract'].models.openrouter).toBe(OPUS);
-    expect(cfg.routes['enrich.extract'].allowedModels).toContain('anthropic/claude-opus-5.5');
+    for (const r of ['market.analyze', 'market.size', 'discovery', 'enrich.extract'] as const) {
+      expect(cfg.routes[r]).toMatchObject({ provider: 'openrouter', models: { openrouter: LUNA }, allowedModels: [LUNA] });
+    }
+    expect(cfg.routes['discovery'].requires).toEqual(['web_search']); // lo de la 0011 se conserva
+    expect(cfg.routes['content.generate'].models.openrouter).toBe(OPUS);
+    expect(cfg.prices[LUNA]).toEqual({ input_per_mtok_usd: 0.1, output_per_mtok_usd: 0.5, cached_per_mtok_usd: 0.01 });
     expect(cfg.prices[OPUS]).toEqual({ input_per_mtok_usd: 4, output_per_mtok_usd: 20, cached_per_mtok_usd: 0.2 });
+    const audit = await t.app.query(`select 1 from audit_log where actor = 'migración 0015' and entity_id = 'llm_routes'`);
+    expect(audit.rowCount).toBe(1);
   });
 
   it('un ajuste ausente o con forma inválida hace fallar la carga (falla cerrado)', async () => {
@@ -89,14 +96,14 @@ describe('registro de uso y gasto del día (P6.3, REQ-OBS-01)', () => {
 
 describe('recorrido completo: pasarela + Postgres + adaptador + servidor simulado', () => {
   it('ejecuta la ruta, registra el gasto real y se detiene al agotar el presupuesto', async () => {
-    srv = await startTestServer(() => ({ json: completion({ content: '{"nombre":"Clínica Sol"}', cost: 4.5 }) }));
+    srv = await startTestServer(() => ({ json: completion({ content: '{"nombre":"Clínica Sol"}', cost: 4.5, model: LUNA }) }));
     const store = createPgLlmStore(t.app);
     await t.app.query(`delete from usage_costs`);
     const gw = createGateway({ store, providers: { openrouter: createOpenRouterProvider({ apiKey: 'sk-or-test', baseUrl: srv.baseUrl }) }, clock: () => AT });
     const ask = { messages: [{ role: 'user' as const, content: 'x' }], schema: { name: 'ficha', zod: z.object({ nombre: z.string() }) } };
 
     const first = await gw.run('enrich.extract', ask);
-    expect(first).toMatchObject({ status: 'ok', data: { nombre: 'Clínica Sol' }, servedModel: OPUS });
+    expect(first).toMatchObject({ status: 'ok', data: { nombre: 'Clínica Sol' }, servedModel: LUNA });
     expect(await store.spentTodayEur(AT)).toBeCloseTo(4.5, 6);
     expect(srv.requests[0]!.body.provider).toMatchObject({ data_collection: 'deny', require_parameters: true });
 
