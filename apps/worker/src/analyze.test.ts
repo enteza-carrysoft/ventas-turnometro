@@ -49,6 +49,12 @@ describe('analyzeMarket (REQ-MKT-02)', () => {
     expect((await t.app.query(`select status, definition from segments where slug = 'clinicas-dentales'`)).rows[0]).toMatchObject({ status: 'draft', definition: { fit: { provenance: 'inferred' } } });
   });
 
+  it('los mercados sugeridos llegan al modelo', async () => {
+    const { deps, run } = setup(ok({ segments: [seg({ name: 'Peluquerías sin cita', source_urls: [U1] })] }));
+    await analyzeMarket(deps, P1, ['peluquerías']);
+    expect(run.mock.calls[0]?.[1].messages[0]?.content).toContain('- peluquerías');
+  });
+
   it('el modelo cita una URL que no se consultó: el segmento se rechaza y no se guarda', async () => {
     const { deps } = setup(ok({ segments: [seg({ name: 'Ópticas', source_urls: ['https://inventada.es/'] })] }));
     const before = await count('select count(*) n from segments');

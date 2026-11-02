@@ -19,7 +19,7 @@ export type AnalyzeOutcome =
   | { status: 'not_found' | 'no_approved_facts' | 'no_pages' }
   | { status: 'llm_failed'; reason: string | undefined; costEur: number };
 
-export async function analyzeMarket(deps: AnalyzeDeps, productId: string): Promise<AnalyzeOutcome> {
+export async function analyzeMarket(deps: AnalyzeDeps, productId: string, hints: readonly string[] = []): Promise<AnalyzeOutcome> {
   const product = (await deps.pool.query('select website from products where id = $1', [productId])).rows[0] as { website: string } | undefined;
   if (!product) return { status: 'not_found' };
   const facts = (await deps.pool.query(`select facts from product_facts where product_id = $1 and status = 'approved'`, [productId])).rows[0] as { facts: unknown } | undefined;
@@ -29,7 +29,7 @@ export async function analyzeMarket(deps: AnalyzeDeps, productId: string): Promi
   if (crawled.pages.length === 0) return { status: 'no_pages' };
 
   const vocabulary = Object.keys(DEFAULT_SCORING_MODEL.signals);
-  const prepared = prepareMarketAnalysis(crawled.pages, facts.facts, vocabulary);
+  const prepared = prepareMarketAnalysis(crawled.pages, facts.facts, vocabulary, hints);
   const res = await deps.gateway.run<MarketAnalysis>('market.analyze', {
     system: prepared.request.system, messages: prepared.request.messages, schema: { name: 'segmentos_icp', zod: marketAnalysisSchema },
   });

@@ -43,13 +43,13 @@ export interface TickStats {
 /** Fallos del sistema (no de la ficha): si ocurren, se para el lote y no se consume ningún intento de las fichas. */
 const SYSTEMIC = new Set(['budget', 'budget_unknown', 'provider_disabled', 'dpa_missing', 'no_config', 'capability_unsupported', 'no_model_for_provider', 'provider_unavailable', 'usage_not_recorded']);
 
-const analyzePayload = z.object({ productId: z.string().min(1) });
+const analyzePayload = z.object({ productId: z.string().min(1), hints: z.array(z.string().min(1).max(60)).max(10).optional() });
 
 async function handleRequest(deps: TickDeps, req: ClaimedRequest): Promise<void> {
   const parsed = analyzePayload.safeParse(req.payload);
   const now = deps.now?.();
   if (!parsed.success) { await failRequest(deps.pool, req.id, 'carga no válida: falta productId', now); return; }
-  const out = await analyzeMarket({ pool: deps.pool, gateway: deps.gateway, crawl: deps.crawl, userAgent: deps.userAgent, actor: 'system:market.analyze' }, parsed.data.productId);
+  const out = await analyzeMarket({ pool: deps.pool, gateway: deps.gateway, crawl: deps.crawl, userAgent: deps.userAgent, actor: 'system:market.analyze' }, parsed.data.productId, parsed.data.hints);
   if (out.status === 'analyzed') await finishRequest(deps.pool, req.id, out, now);
   else await failRequest(deps.pool, req.id, out.status === 'llm_failed' ? `llm_failed: ${out.reason ?? 'desconocido'}` : out.status, now);
 }

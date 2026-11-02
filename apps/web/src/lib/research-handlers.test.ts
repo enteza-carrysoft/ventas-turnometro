@@ -97,6 +97,13 @@ describe('handleRequestAnalysis', () => {
     expect((await handleRequestAnalysis(post({}), deps('mkt'))).status).toBe(200);
   });
 
+  it('los mercados sugeridos se normalizan y viajan en la carga del trabajo', async () => {
+    await t.admin.query(`update worker_requests set status = 'done'`);
+    expect((await handleRequestAnalysis(post({ hints: 'peluquerías, Peluquerías, barberías' }), deps('mkt'))).status).toBe(200);
+    const row = (await t.app.query(`select payload from worker_requests where status = 'queued'`)).rows[0] as { payload: unknown };
+    expect(row.payload).toEqual({ productId: PRODUCT, hints: ['peluquerías', 'barberías'] });
+  });
+
   it('sin ningún producto dado de alta ⇒ 409 (y no se encola nada)', async () => {
     const empty = await createTestDb();
     try {

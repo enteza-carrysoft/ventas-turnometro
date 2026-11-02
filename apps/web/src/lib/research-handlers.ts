@@ -1,4 +1,5 @@
 import { cancelJob, createResearchJob, listRequests, MAX_BATCH, pauseJob, requestWork, resumeJob } from '@turnosala/db/web';
+import { parseMarketHints } from '@turnosala/core';
 import { z } from 'zod';
 import { fail, guardPost, json, UUID, type RouteDeps } from './http.js';
 
@@ -48,6 +49,7 @@ export async function handleRequestAnalysis(req: Request, deps: RouteDeps): Prom
   if (!product) return json(409, { error: 'no hay ningún producto dado de alta' });
   const open = (await listRequests(deps.pool, 'market.analyze', 5)).some((r) => r.status === 'queued' || r.status === 'running');
   if (open) return json(409, { error: 'ya hay un análisis en curso' });
-  const id = await requestWork(deps.pool, 'market.analyze', { productId: product.id }, g.who.userId);
+  const hints = parseMarketHints((g.body as { hints?: unknown } | null)?.hints);
+  const id = await requestWork(deps.pool, 'market.analyze', { productId: product.id, ...(hints.length ? { hints } : {}) }, g.who.userId);
   return json(200, { requestId: id });
 }
