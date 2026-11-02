@@ -1,6 +1,6 @@
 import { createTestDb, ingestCandidate, saveEnrichment, saveSegmentDrafts, type TestDb } from '@turnosala/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { handleBulkApprove, handleCorrect, handleExport, handleReview, handleSegmentAction, type ReviewDeps } from './review-handlers.js';
+import { handleAddContact, handleBulkApprove, handleCorrect, handleExport, handleReview, handleSegmentAction, type ReviewDeps } from './review-handlers.js';
 
 let t: TestDb;
 const ORIGIN = 'https://go.example.test';
@@ -71,6 +71,15 @@ describe('handleCorrect, handleBulkApprove, handleExport', () => {
     expect((await handleCorrect(post({ field: 'sites_count', value: '4' }), deps('mkt'), id)).status).toBe(200);
     expect((await handleCorrect(post({ field: 'sites_count', value: 'x' }), deps('mkt'), id)).status).toBe(422);
     expect((await handleCorrect(post({ field: 'phone', value: '1' }), deps('mkt'), id)).status).toBe(422);
+  });
+
+  it('añadir contacto ⇒ 200; email personal ⇒ 422 personal_email; tipo desconocido ⇒ 422; ventas ⇒ 403', async () => {
+    const id = await prospect();
+    expect((await handleAddContact(post({ type: 'generic_email', value: 'info@nova-pelu.es', sourceUrl: 'https://nova-pelu.es/' }), deps('mkt'), id)).status).toBe(200);
+    const personal = await handleAddContact(post({ type: 'generic_email', value: 'nova@gmail.com', sourceUrl: 'https://nova-pelu.es/' }), deps('mkt'), id);
+    expect([personal.status, ((await personal.json()) as { error: string }).error]).toEqual([422, 'personal_email']);
+    expect((await handleAddContact(post({ type: 'personal_email', value: 'a@b.es', sourceUrl: 'https://b.es/' }), deps('mkt'), id)).status).toBe(422);
+    expect((await handleAddContact(post({ type: 'generic_email', value: 'info@nova-pelu.es', sourceUrl: 'https://nova-pelu.es/' }), deps('sales'), id)).status).toBe(403);
   });
 
   it('aprobación en bloque devuelve aprobadas y la muestra de calidad (≥ 10 %)', async () => {

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-type Mode = null | 'discard' | 'block' | 'correct';
+type Mode = null | 'discard' | 'block' | 'correct' | 'contact';
 interface Props {
   id: string;
   status: string;
@@ -16,6 +16,8 @@ interface Props {
 const ERRORS: Record<string, string> = {
   forbidden: 'No tienes permiso para revisar fichas.', not_reviewable: 'Esta ficha ya no se puede revisar así.', reason_required: 'Escribe el motivo.',
   invalid_value: 'El valor no es válido.', domain_taken: 'Ya existe otra ficha con esa web.', not_found: 'La ficha no existe.',
+  personal_email: 'Parece un email personal (nombre de persona o Gmail, Hotmail…): no se guarda. Usa el buzón genérico de la empresa (info@, contacto@…).',
+  invalid_source: 'Indica la dirección (https://…) de la página donde has visto el dato.', already_exists: 'Ese contacto ya está en la ficha.',
 };
 
 async function send(url: string, body: unknown): Promise<{ ok: boolean; error: string | null }> {
@@ -40,7 +42,31 @@ function useShortcuts(handlers: Record<string, () => void>, enabled: boolean): v
   }, [handlers, enabled]);
 }
 
-function ModeForm({ mode, onSubmit, onCancel, busy }: { mode: Exclude<Mode, null>; onSubmit: (v: string, field: string) => void; onCancel: () => void; busy: boolean }) {
+const CONTACT_TYPES: Array<[string, string]> = [
+  ['generic_email', 'Email genérico (info@, contacto@…)'], ['switchboard_phone', 'Teléfono'], ['web_form', 'Formulario de contacto (URL)'],
+  ['booking_url', 'Página de reservas o cita previa (URL)'], ['postal_address', 'Dirección postal'],
+];
+
+function ContactForm({ onSubmit, onCancel, busy }: { onSubmit: (v: { type: string; value: string; sourceUrl: string }) => void; onCancel: () => void; busy: boolean }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [type, setType] = useState('generic_email');
+  const [value, setValue] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
+  useEffect(() => { ref.current?.focus(); }, []);
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); onSubmit({ type, value, sourceUrl }); }} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }} data-testid="anadir-contacto">
+      <select aria-label="Tipo de contacto" value={type} onChange={(e) => setType(e.target.value)}>
+        {CONTACT_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+      <label>Valor <input ref={ref} value={value} onChange={(e) => setValue(e.target.value)} style={{ minWidth: 220 }} /></label>
+      <label>Visto en (URL) <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://…/contacto" style={{ minWidth: 220 }} /></label>
+      <button type="submit" disabled={busy}>Añadir</button>
+      <button type="button" onClick={onCancel}>Cancelar (Esc)</button>
+    </form>
+  );
+}
+
+function ModeForm({ mode, onSubmit, onCancel, busy }: { mode: Exclude<Mode, null | 'contact'>; onSubmit: (v: string, field: string) => void; onCancel: () => void; busy: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState('');
   const [field, setField] = useState('name');
@@ -80,7 +106,7 @@ export function ReviewActions({ id, status, canReview, nextId, prevId }: Props) 
 
   const approve = useCallback(() => { if (pending) void run(`/api/fichas/${id}/review`, { action: 'approve' }, true); }, [pending, run, id]);
   const handlers = {
-    a: approve, d: () => setMode('discard'), b: () => setMode('block'), c: () => setMode('correct'), escape: () => setMode(null),
+    a: approve, d: () => setMode('discard'), b: () => setMode('block'), c: () => setMode('correct'), e: () => setMode('contact'), escape: () => setMode(null),
     n: () => { if (nextId) router.push(`/fichas/${nextId}`); }, p: () => { if (prevId) router.push(`/fichas/${prevId}`); },
   };
   useShortcuts(handlers, canReview);
@@ -97,10 +123,13 @@ export function ReviewActions({ id, status, canReview, nextId, prevId }: Props) 
         <button type="button" onClick={handlers.d} disabled={busy}>Descartar (D)</button>
         <button type="button" onClick={handlers.b} disabled={busy}>Bloquear (B)</button>
         <button type="button" onClick={handlers.c} disabled={busy}>Corregir campo (C)</button>
+        <button type="button" onClick={handlers.e} disabled={busy}>Añadir contacto (E)</button>
         {prevId ? <Link href={`/fichas/${prevId}`}>Anterior (P)</Link> : null}
         {nextId ? <Link href={`/fichas/${nextId}`}>Siguiente (N)</Link> : null}
       </div>
-      {mode ? <ModeForm mode={mode} onSubmit={submit} onCancel={() => setMode(null)} busy={busy} /> : null}
+      {mode === 'contact'
+        ? <ContactForm onSubmit={(v) => void run(`/api/fichas/${id}/contact`, v, false)} onCancel={() => setMode(null)} busy={busy} />
+        : mode ? <ModeForm mode={mode} onSubmit={submit} onCancel={() => setMode(null)} busy={busy} /> : null}
       {error ? <p role="alert" style={{ color: '#b00020', margin: 0 }}>{error}</p> : null}
     </div>
   );

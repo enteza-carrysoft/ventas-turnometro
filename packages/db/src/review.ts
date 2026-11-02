@@ -1,4 +1,4 @@
-import { normalizeName, proposeSample, registrableDomain } from '@turnosala/core';
+import { classifyEmail, containsPersonName, normalizeAddress, normalizeName, normalizePhone, proposeSample, registrableDomain } from '@turnosala/core';
 import type pg from 'pg';
 import { uuidv7 } from './uuid.js';
 import { REVIEWABLE } from './review-read.js';
@@ -101,6 +101,77 @@ export async function correctField(pool: Db, id: string, who: Reviewer, input: C
     if ((e as { code?: string }).code === '23505') return { ok: false, reason: 'domain_taken' };
     throw e;
   }
+}
+
+/** Canales que el revisor puede añadir a mano. `personal_email` no existe aquí: REQ-ENR-03 lo descarta siempre. */
+export const MANUAL_CONTACT_TYPES = ['generic_email', 'switchboard_phone', 'mobile_phone', 'postal_address', 'web_form', 'booking_url'] as const;
+export type ManualContactType = (typeof MANUAL_CONTACT_TYPES)[number];
+export interface AddContactInput { type: ManualContactType; value: string; sourceUrl: string }
+export type AddContactResult = { ok: true } | { ok: false; reason: 'forbidden' | 'invalid_field' | 'invalid_value' | 'invalid_source' | 'personal_email' | 'not_found' | 'not_reviewable' | 'already_exists' };
+
+const httpUrl = (raw: string): string | null => {
+  try {
+    const u = new URL(raw.trim());
+    return /^https?:$/.test(u.protocol) && u.hostname.includes('.') ? u.href : null;
+  } catch {
+    return null;
+  }
+};
+
+/** Valida y normaliza con las mismas reglas que la extracción automática (REQ-ENR-03, REQ-VER-01): el revisor no se salta ninguna. */
+function manualContact(input: AddContactInput): { type: ManualContactType; value: string; norm: string } | 'invalid_value' | 'personal_email' {
+  const v = input.value.trim();
+  if (!v || v.length > 300) return 'invalid_value';
+  switch (input.type) {
+    case 'generic_email': {
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return 'invalid_value';
+      if (classifyEmail(v) === 'personal_email') return 'personal_email';
+      return { type: 'generic_email', value: v.toLowerCase(), norm: v.toLowerCase() };
+    }
+    case 'switchboard_phone':
+    case 'mobile_phone': {
+      const p = normalizePhone(v);
+      if (!p.e164 || p.notCallable) return 'invalid_value';
+      const type = p.kind === 'mobile' ? 'mobile_phone' : 'switchboard_phone';
+      return { type, value: p.e164, norm: p.e164 };
+    }
+    case 'postal_address':
+      return containsPersonName(v) ? 'invalid_value' : { type: 'postal_address', value: v, norm: normalizeAddress(v) };
+    case 'web_form':
+    case 'booking_url': {
+      const u = httpUrl(v);
+      return u ? { type: input.type, value: u, norm: u } : 'invalid_value';
+    }
+  }
+}
+
+/**
+ * Añade a mano un canal de contacto que el revisor ha encontrado (p. ej. el email genérico que la IA no extrajo). Exige la página donde se vio,
+ * que queda como evidencia «observed» de revisión manual. Añadir un canal no contacta con nadie: su uso sigue pasando por la puerta (P1).
+ */
+export async function addContactPoint(pool: Db, id: string, who: Reviewer, input: AddContactInput): Promise<AddContactResult> {
+  if (!canReview(who)) return { ok: false, reason: 'forbidden' };
+  if (!(MANUAL_CONTACT_TYPES as readonly string[]).includes(input.type)) return { ok: false, reason: 'invalid_field' };
+  const source = httpUrl(input.sourceUrl ?? '');
+  if (!source) return { ok: false, reason: 'invalid_source' };
+  const c = manualContact(input);
+  if (typeof c === 'string') return { ok: false, reason: c };
+  return tx(pool, async (cl): Promise<AddContactResult> => {
+    const st = await lockStatus(cl, id);
+    if (st === undefined) return { ok: false, reason: 'not_found' };
+    if (!['candidate', ...REVIEWABLE].includes(st)) return { ok: false, reason: 'not_reviewable' };
+    const dup = await cl.query('select 1 from contact_points where prospect_id = $1 and type = $2 and value_norm = $3', [id, c.type, c.norm]);
+    if (dup.rowCount) return { ok: false, reason: 'already_exists' };
+    const ev = await cl.query(
+      `insert into evidences (id, prospect_id, field, value, provenance, source_url, fetched_at, extractor_version) values ($1,$2,$3,$4,'observed',$5,now(),'manual-review')
+       on conflict (prospect_id, field, coalesce(value, ''), source_url) do update set fetched_at = excluded.fetched_at returning id`,
+      [uuidv7(), id, `contact:${c.type}`, c.value, source]);
+    await cl.query(`insert into contact_points (id, prospect_id, type, value, value_norm, evidence_id) values ($1,$2,$3,$4,$5,$6)`,
+      [uuidv7(), id, c.type, c.value, c.norm, (ev.rows[0] as { id: string }).id]);
+    await cl.query(`update prospects set updated_at = now() where id = $1`, [id]);
+    await audit(cl, who.userId, 'prospect.contact_added', id, { type: c.type, value: c.value, sourceUrl: source });
+    return { ok: true };
+  });
 }
 
 export interface BulkResult {

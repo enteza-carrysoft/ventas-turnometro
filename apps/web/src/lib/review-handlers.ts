@@ -1,4 +1,4 @@
-import { approveSegment, bulkApprove, correctField, exportApprovedCsv, retireSegment, reviewProspect } from '@turnosala/db/web';
+import { addContactPoint, approveSegment, bulkApprove, correctField, MANUAL_CONTACT_TYPES, exportApprovedCsv, retireSegment, reviewProspect } from '@turnosala/db/web';
 import { z } from 'zod';
 import { fail, guardPost, json, UUID, type RouteDeps } from './http.js';
 import { roleOf, type Role } from './users.js';
@@ -33,6 +33,19 @@ export async function handleCorrect(req: Request, deps: ReviewDeps, id: string):
   const parsed = correctBody.safeParse(g.body);
   if (!parsed.success) return json(422, { error: 'datos no válidos' });
   const r = await correctField(deps.pool, id, g.who, parsed.data);
+  return r.ok ? json(200, { ok: true }) : fail(r.reason);
+}
+
+const contactBody = z.object({ type: z.enum(MANUAL_CONTACT_TYPES), value: z.string().max(300), sourceUrl: z.string().max(2000) });
+
+/** El revisor añade un canal que la IA no encontró (REQ-REV-02). Mismas reglas que la extracción: un email personal se rechaza (REQ-ENR-03). */
+export async function handleAddContact(req: Request, deps: ReviewDeps, id: string): Promise<Response> {
+  const g = await guardPost(req, deps);
+  if (g instanceof Response) return g;
+  if (!UUID.test(id)) return json(404, { error: 'not_found' });
+  const parsed = contactBody.safeParse(g.body);
+  if (!parsed.success) return json(422, { error: 'datos no válidos' });
+  const r = await addContactPoint(deps.pool, id, g.who, parsed.data);
   return r.ok ? json(200, { ok: true }) : fail(r.reason);
 }
 

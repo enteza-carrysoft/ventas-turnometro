@@ -326,3 +326,9 @@ aprobación expresa del gasto (P6.2).
 5. **Gasto de pruebas reales:** autorizar un tope de pruebas con el LLM real (propongo ≤ 10 € en total para F1.1 y F1.10) y crear la clave `OPENROUTER_API_KEY` **tú**, fuera del chat.
 6. **Presupuesto del piloto:** ¿se mantienen 5 €/día (≈ 6 días de piloto) o se sube temporalmente?
 7. **Antes de la primera ejecución con webs reales:** D-16 (contrato de OpenRouter) y D-13 (lista de clientes).
+- 02/11/2026 — **Añadir contacto a mano en la revisión** (REQ-REV-02): el revisor puede añadir un canal que la IA no encontró (email genérico,
+  teléfono, formulario, reservas, dirección). Mismas reglas que la extracción: email personal o de webmail rechazado (REQ-ENR-03), teléfono a
+  E.164 y clasificado por el sistema (móvil ⇒ `mobile_phone`), URL http(s), sin nombres de persona en la dirección. Exige la URL donde se vio:
+  queda como evidencia `observed` con `extractor_version = 'manual-review'` y en `audit_log` (`prospect.contact_added`). No contacta a nadie.
+- Auto-blindaje: el test del rastreador «corta las respuestas lentas» puede fallar con la CI completa cargada (una página extra da timeout);
+  pasa aislado. Si falla, repetir antes de dudar del cambio.

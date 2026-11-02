@@ -37,6 +37,6 @@ export async function guardSessionPost(req: Request, deps: RouteDeps): Promise<{
 
 const FAIL_STATUS: Record<string, number> = {
   forbidden: 403, not_found: 404, not_reviewable: 409, not_draft: 409, not_approved: 409, domain_taken: 409, conflict: 409,
-  already_approved: 409, closed: 409, invalid_stage: 422, invalid_reason: 422, invalid_owner: 422, use_win: 422, use_lose: 422, version_exists: 409, invalid: 422, reason_required: 422, invalid_value: 422, invalid_field: 422, invalid_patch: 422,
+  already_approved: 409, closed: 409, invalid_stage: 422, invalid_reason: 422, invalid_owner: 422, use_win: 422, use_lose: 422, version_exists: 409, invalid: 422, reason_required: 422, invalid_value: 422, invalid_field: 422, invalid_patch: 422, invalid_source: 422, personal_email: 422, already_exists: 409,
 };
 export const fail = (reason: string): Response => json(FAIL_STATUS[reason] ?? 400, { error: reason });

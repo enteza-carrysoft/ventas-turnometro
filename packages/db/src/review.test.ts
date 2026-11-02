@@ -1,6 +1,6 @@
 import { seededRng } from '@turnosala/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { bulkApprove, correctField, exportApprovedCsv, getCard, listQueue, reviewProspect } from './review.js';
+import { addContactPoint, bulkApprove, correctField, exportApprovedCsv, getCard, listQueue, reviewProspect } from './review.js';
 import { ingestCandidate } from './ingest.js';
 import { saveEnrichment } from './enrichment.js';
 import { createTestDb, type TestDb } from './testing.js';
@@ -124,6 +124,55 @@ describe('reviewProspect (REQ-REV-02 CA1)', () => {
     await reviewProspect(t.app, id, MKT, { action: 'approve' });
     expect(await reviewProspect(t.app, id, MKT, { action: 'block', reason: 'error de datos' })).toEqual({ ok: true, status: 'blocked' });
     expect(await reviewProspect(t.app, id, MKT, { action: 'discard', reason: 'x' })).toEqual({ ok: false, reason: 'not_reviewable' });
+  });
+});
+
+describe('addContactPoint (REQ-REV-02, REQ-ENR-03): el revisor añade un canal que la IA no encontró', () => {
+  const contacts = async (id: string) => (await t.app.query(
+    `select c.type, c.value, e.provenance, e.extractor_version, e.source_url from contact_points c join evidences e on e.id = c.evidence_id where c.prospect_id = $1 and e.extractor_version = 'manual-review' order by c.type`, [id])).rows;
+
+  it('email genérico, teléfono normalizado a E.164 y formulario: con evidencia «observed» de la página indicada y auditoría', async () => {
+    const id = await prospect();
+    expect(await addContactPoint(t.app, id, MKT, { type: 'generic_email', value: ' Info@Pelu-Nova.es ', sourceUrl: 'https://pelu-nova.es/contacto' })).toEqual({ ok: true });
+    expect(await addContactPoint(t.app, id, MKT, { type: 'switchboard_phone', value: '955 66 77 88', sourceUrl: 'https://pelu-nova.es/contacto' })).toEqual({ ok: true });
+    expect(await addContactPoint(t.app, id, MKT, { type: 'web_form', value: 'https://pelu-nova.es/contacto#form', sourceUrl: 'https://pelu-nova.es/contacto' })).toEqual({ ok: true });
+    expect(await contacts(id)).toEqual([
+      { type: 'generic_email', value: 'info@pelu-nova.es', provenance: 'observed', extractor_version: 'manual-review', source_url: 'https://pelu-nova.es/contacto' },
+      { type: 'switchboard_phone', value: '+34955667788', provenance: 'observed', extractor_version: 'manual-review', source_url: 'https://pelu-nova.es/contacto' },
+      { type: 'web_form', value: 'https://pelu-nova.es/contacto#form', provenance: 'observed', extractor_version: 'manual-review', source_url: 'https://pelu-nova.es/contacto' },
+    ]);
+    expect((await audits('prospect.contact_added', id)).map((a) => [a.actor, a.payload.type]).sort()).toEqual([['u-mkt', 'generic_email'], ['u-mkt', 'switchboard_phone'], ['u-mkt', 'web_form']]);
+  });
+
+  it('un móvil se guarda como mobile_phone aunque se elija «teléfono» (la clasificación no la decide el revisor)', async () => {
+    const id = await prospect();
+    expect(await addContactPoint(t.app, id, MKT, { type: 'switchboard_phone', value: '612 345 678', sourceUrl: 'https://x.es/' })).toEqual({ ok: true });
+    expect((await contacts(id)).map((c) => c.type)).toEqual(['mobile_phone']);
+  });
+
+  it('un email personal (nombre de persona o webmail) no se guarda: REQ-ENR-03 lo descarta también a mano', async () => {
+    const id = await prospect();
+    for (const value of ['maria.garcia@pelu-nova.es', 'pelunova@gmail.com'])
+      expect(await addContactPoint(t.app, id, MKT, { type: 'generic_email', value, sourceUrl: 'https://pelu-nova.es/' })).toEqual({ ok: false, reason: 'personal_email' });
+    expect(await contacts(id)).toEqual([]);
+  });
+
+  it('valores inválidos, sin página de origen, rol sin permiso, tipo desconocido, ficha no revisable o repetido se rechazan', async () => {
+    const id = await prospect();
+    const before = await sideEffects();
+    const ok = { type: 'generic_email' as const, value: 'info@pelu-nova.es', sourceUrl: 'https://pelu-nova.es/' };
+    expect(await addContactPoint(t.app, id, MKT, { ...ok, value: 'no-es-email' })).toEqual({ ok: false, reason: 'invalid_value' });
+    expect(await addContactPoint(t.app, id, MKT, { type: 'switchboard_phone', value: '12', sourceUrl: ok.sourceUrl })).toEqual({ ok: false, reason: 'invalid_value' });
+    expect(await addContactPoint(t.app, id, MKT, { type: 'booking_url', value: 'javascript:alert(1)', sourceUrl: ok.sourceUrl })).toEqual({ ok: false, reason: 'invalid_value' });
+    expect(await addContactPoint(t.app, id, MKT, { type: 'postal_address', value: 'Dr. Juan Pérez, calle Real 3', sourceUrl: ok.sourceUrl })).toEqual({ ok: false, reason: 'invalid_value' });
+    expect(await addContactPoint(t.app, id, MKT, { ...ok, sourceUrl: 'lo vi en internet' })).toEqual({ ok: false, reason: 'invalid_source' });
+    expect(await addContactPoint(t.app, id, { userId: 'u', role: 'sales' }, ok)).toEqual({ ok: false, reason: 'forbidden' });
+    expect(await addContactPoint(t.app, id, MKT, { ...ok, type: 'personal_email' as never })).toEqual({ ok: false, reason: 'invalid_field' });
+    const blocked = await prospect({ status: 'blocked' });
+    expect(await addContactPoint(t.app, blocked, MKT, ok)).toEqual({ ok: false, reason: 'not_reviewable' });
+    expect(await addContactPoint(t.app, id, MKT, ok)).toEqual({ ok: true });
+    expect(await addContactPoint(t.app, id, MKT, { ...ok, value: 'INFO@pelu-nova.es' })).toEqual({ ok: false, reason: 'already_exists' });
+    expect(await sideEffects()).toEqual(before); // añadir un canal no contacta ni decide nada
   });
 });
 
