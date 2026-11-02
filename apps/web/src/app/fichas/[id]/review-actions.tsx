@@ -16,7 +16,7 @@ interface Props {
 const ERRORS: Record<string, string> = {
   forbidden: 'No tienes permiso para revisar fichas.', not_reviewable: 'Esta ficha ya no se puede revisar así.', reason_required: 'Escribe el motivo.',
   invalid_value: 'El valor no es válido.', domain_taken: 'Ya existe otra ficha con esa web.', not_found: 'La ficha no existe.',
-  personal_email: 'Parece un email personal (nombre de persona o Gmail, Hotmail…): no se guarda. Usa el buzón genérico de la empresa (info@, contacto@…).',
+  personal_email: 'Parece el email de una persona: no se guarda. Vale el buzón de la empresa (info@, contacto@…) o un Gmail/Hotmail que lleve el nombre del negocio.',
   invalid_source: 'Indica la dirección (https://…) de la página donde has visto el dato.', already_exists: 'Ese contacto ya está en la ficha.',
 };
 
@@ -43,7 +43,7 @@ function useShortcuts(handlers: Record<string, () => void>, enabled: boolean): v
 }
 
 const CONTACT_TYPES: Array<[string, string]> = [
-  ['generic_email', 'Email genérico (info@, contacto@…)'], ['switchboard_phone', 'Teléfono'], ['web_form', 'Formulario de contacto (URL)'],
+  ['generic_email', 'Email de la empresa (info@…, o Gmail con su nombre)'], ['switchboard_phone', 'Teléfono'], ['web_form', 'Formulario de contacto (URL)'],
   ['booking_url', 'Página de reservas o cita previa (URL)'], ['postal_address', 'Dirección postal'],
 ];
 

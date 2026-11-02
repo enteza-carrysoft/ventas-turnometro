@@ -150,11 +150,16 @@ describe('addContactPoint (REQ-REV-02, REQ-ENR-03): el revisor añade un canal q
     expect((await contacts(id)).map((c) => c.type)).toEqual(['mobile_phone']);
   });
 
-  it('un email personal (nombre de persona o webmail) no se guarda: REQ-ENR-03 lo descarta también a mano', async () => {
-    const id = await prospect();
-    for (const value of ['maria.garcia@pelu-nova.es', 'pelunova@gmail.com'])
+  it('el email de una persona no se guarda (P2.3); el webmail del propio negocio sí, anotado como tal', async () => {
+    const id = await prospect({ name: 'Peluquería Arcoíris Nova S.L.' });
+    for (const value of ['maria.garcia@pelu-nova.es', 'maria.garcia@gmail.com', 'peluqueriamaria@gmail.com'])
       expect(await addContactPoint(t.app, id, MKT, { type: 'generic_email', value, sourceUrl: 'https://pelu-nova.es/' })).toEqual({ ok: false, reason: 'personal_email' });
     expect(await contacts(id)).toEqual([]);
+    expect(await addContactPoint(t.app, id, MKT, { type: 'generic_email', value: 'PeluqueriaArcoiris@Gmail.com', sourceUrl: 'https://pelu-nova.es/' })).toEqual({ ok: true });
+    expect((await contacts(id)).map((c) => [c.type, c.value])).toEqual([['generic_email', 'peluqueriaarcoiris@gmail.com']]);
+    const ev = (await t.app.query(`select explanation from evidences where prospect_id = $1 and field = 'contact:generic_email'`, [id])).rows[0] as { explanation: string };
+    expect(ev.explanation).toMatch(/webmail del propio negocio/);
+    expect((await audits('prospect.contact_added', id))[0]?.payload).toMatchObject({ webmail: true });
   });
 
   it('valores inválidos, sin página de origen, rol sin permiso, tipo desconocido, ficha no revisable o repetido se rechazan', async () => {

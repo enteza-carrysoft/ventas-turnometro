@@ -1,4 +1,4 @@
-import { classifyEmail, containsPersonName, normalizeAddress, normalizeName, normalizePhone, proposeSample, registrableDomain } from '@turnosala/core';
+import { classifyEmail, containsPersonName, isBusinessWebmail, normalizeAddress, normalizeName, normalizePhone, proposeSample, registrableDomain } from '@turnosala/core';
 import type pg from 'pg';
 import { uuidv7 } from './uuid.js';
 import { REVIEWABLE } from './review-read.js';
@@ -119,14 +119,16 @@ const httpUrl = (raw: string): string | null => {
 };
 
 /** Valida y normaliza con las mismas reglas que la extracción automática (REQ-ENR-03, REQ-VER-01): el revisor no se salta ninguna. */
-function manualContact(input: AddContactInput): { type: ManualContactType; value: string; norm: string } | 'invalid_value' | 'personal_email' {
+function manualContact(input: AddContactInput, businessName: string): { type: ManualContactType; value: string; norm: string; webmail?: true } | 'invalid_value' | 'personal_email' {
   const v = input.value.trim();
   if (!v || v.length > 300) return 'invalid_value';
   switch (input.type) {
     case 'generic_email': {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return 'invalid_value';
-      if (classifyEmail(v) === 'personal_email') return 'personal_email';
-      return { type: 'generic_email', value: v.toLowerCase(), norm: v.toLowerCase() };
+      const e = v.toLowerCase();
+      if (classifyEmail(v) === 'generic_email') return { type: 'generic_email', value: e, norm: e };
+      // Gmail/Hotmail… solo si es el buzón del propio negocio (decisión del promotor 02/11/2026, dentro de P2.3); el de una empleada, no.
+      return isBusinessWebmail(v, businessName) ? { type: 'generic_email', value: e, norm: e, webmail: true } : 'personal_email';
     }
     case 'switchboard_phone':
     case 'mobile_phone': {
@@ -154,22 +156,22 @@ export async function addContactPoint(pool: Db, id: string, who: Reviewer, input
   if (!(MANUAL_CONTACT_TYPES as readonly string[]).includes(input.type)) return { ok: false, reason: 'invalid_field' };
   const source = httpUrl(input.sourceUrl ?? '');
   if (!source) return { ok: false, reason: 'invalid_source' };
-  const c = manualContact(input);
-  if (typeof c === 'string') return { ok: false, reason: c };
   return tx(pool, async (cl): Promise<AddContactResult> => {
-    const st = await lockStatus(cl, id);
-    if (st === undefined) return { ok: false, reason: 'not_found' };
-    if (!['candidate', ...REVIEWABLE].includes(st)) return { ok: false, reason: 'not_reviewable' };
+    const row = (await cl.query('select status, name from prospects where id = $1 for update', [id])).rows[0] as { status: string; name: string } | undefined;
+    if (!row) return { ok: false, reason: 'not_found' };
+    if (!['candidate', ...REVIEWABLE].includes(row.status)) return { ok: false, reason: 'not_reviewable' };
+    const c = manualContact(input, row.name);
+    if (typeof c === 'string') return { ok: false, reason: c };
     const dup = await cl.query('select 1 from contact_points where prospect_id = $1 and type = $2 and value_norm = $3', [id, c.type, c.norm]);
     if (dup.rowCount) return { ok: false, reason: 'already_exists' };
     const ev = await cl.query(
-      `insert into evidences (id, prospect_id, field, value, provenance, source_url, fetched_at, extractor_version) values ($1,$2,$3,$4,'observed',$5,now(),'manual-review')
+      `insert into evidences (id, prospect_id, field, value, provenance, explanation, source_url, fetched_at, extractor_version) values ($1,$2,$3,$4,'observed',$5,$6,now(),'manual-review')
        on conflict (prospect_id, field, coalesce(value, ''), source_url) do update set fetched_at = excluded.fetched_at returning id`,
-      [uuidv7(), id, `contact:${c.type}`, c.value, source]);
+      [uuidv7(), id, `contact:${c.type}`, c.value, c.webmail ? 'Buzón webmail del propio negocio (contiene su nombre); añadido por el revisor' : null, source]);
     await cl.query(`insert into contact_points (id, prospect_id, type, value, value_norm, evidence_id) values ($1,$2,$3,$4,$5,$6)`,
       [uuidv7(), id, c.type, c.value, c.norm, (ev.rows[0] as { id: string }).id]);
     await cl.query(`update prospects set updated_at = now() where id = $1`, [id]);
-    await audit(cl, who.userId, 'prospect.contact_added', id, { type: c.type, value: c.value, sourceUrl: source });
+    await audit(cl, who.userId, 'prospect.contact_added', id, { type: c.type, value: c.value, sourceUrl: source, ...(c.webmail ? { webmail: true } : {}) });
     return { ok: true };
   });
 }

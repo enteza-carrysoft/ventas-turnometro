@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyEmail, containsPersonName, EMAIL_PERSONAL, PERSONA, redactPersonalData } from './redact.js';
+import { classifyEmail, containsPersonName, isBusinessWebmail, EMAIL_PERSONAL, PERSONA, redactPersonalData } from './redact.js';
 
 describe('redactPersonalData: lo que se envía al modelo no lleva nombres de personas (P2.3, REQ-ENR-01 CA3)', () => {
   it.each([
@@ -50,4 +50,20 @@ describe('containsPersonName: red de seguridad sobre lo que devuelve el modelo',
       expect(containsPersonName(v), v).toBe(v === 'Doctor Sol Clínica');
     }
   });
+});
+
+describe('isBusinessWebmail (P2.3): buzón webmail del propio negocio, solo para el alta manual del revisor', () => {
+  it.each([
+    ['peluqueriaarcoiris@gmail.com', 'Peluquería Arcoíris'],
+    ['arcoiris.pelu@hotmail.es', 'Peluquería Arcoíris S.L.'],
+    ['dem_peluqueros@outlook.com', 'DEM Peluqueros'],
+    ['encarnamoreno@gmail.com', 'Peluquería Encarna Moreno'], // el nombre comercial del autónomo es el del negocio (P2.4)
+  ])('%s es el buzón de «%s»', (e, n) => expect(isBusinessWebmail(e, n)).toBe(true));
+
+  it.each([
+    ['maria.garcia@gmail.com', 'Peluquería Arcoíris'], // empleada: nada que ver con el negocio
+    ['peluqueriamaria@gmail.com', 'Peluquería Ruiz'], // solo coincide la palabra del sector, no la marca
+    ['info@arcoiris.es', 'Peluquería Arcoíris'], // no es webmail (ese caso ya lo cubre classifyEmail)
+    ['arcoiris', 'Peluquería Arcoíris'],
+  ])('%s NO es el buzón de «%s»', (e, n) => expect(isBusinessWebmail(e, n)).toBe(false));
 });
