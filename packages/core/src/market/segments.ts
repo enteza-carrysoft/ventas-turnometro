@@ -18,7 +18,8 @@ export const marketAnalysisSchema = z.object({
     fit_score: z.number().int().min(0).max(100),
     fit_reasoning: z.string().trim().min(10).max(1000),
     source_urls: z.array(z.string().trim().min(1)).min(1).max(10),
-    osm_filters: z.array(z.tuple([z.string().trim().min(1), z.string().trim().min(1)])).max(8),
+    // pares como objeto, no como tupla: el modo estricto de OpenAI no admite tuplas (prefixItems); dentro se guardan como [clave, valor]
+    osm_filters: z.array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) })).max(8),
   })).min(1).max(8),
 });
 export type MarketAnalysis = z.infer<typeof marketAnalysisSchema>;
@@ -75,7 +76,7 @@ export function verifySegments(output: MarketAnalysis, ctx: { crawledUrls: reado
         vertical: s.vertical, description: s.description, signals: [...new Set(s.signals.filter((k) => vocab.has(k)))],
         decisionMakerRole: s.decision_maker_role, message: s.message, bestDemo: s.best_demo,
         fit: { score: s.fit_score, provenance: 'inferred', reasoning: s.fit_reasoning }, sourceUrls,
-        osmFilters: s.osm_filters.filter(([k, v]) => OSM_SAFE.test(k) && OSM_SAFE.test(v)),
+        osmFilters: s.osm_filters.filter((f) => OSM_SAFE.test(f.key) && OSM_SAFE.test(f.value)).map((f): [string, string] => [f.key, f.value]),
       },
     });
   }
@@ -99,7 +100,7 @@ export function prepareMarketAnalysis(raw: ReadonlyArray<{ url: string; finalUrl
     '- `fit_score` (0–100) es una estimación tuya: razónala en `fit_reasoning`. No decides umbrales ni apruebas nada; los segmentos quedan en borrador.',
     '- `signals`: solo claves de esta lista, las que identifican a una empresa de ese segmento:',
     vocabulary.map((k) => `  - ${k}`).join('\n'),
-    '- `osm_filters`: pares etiqueta=valor de OpenStreetMap (p. ej. healthcare=dentist) que localizan ese tipo de negocio; deja vacío si no estás seguro.',
+    '- `osm_filters`: pares etiqueta/valor de OpenStreetMap como objetos {key, value} (p. ej. {"key": "healthcare", "value": "dentist"}) que localizan ese tipo de negocio; deja vacío si no estás seguro.',
     '- No uses nombres de personas. Mensaje y demo en español, concretos y sin promesas que los hechos no respalden.',
   ].join('\n');
   const body = pages.map((p) => `<pagina url="${neutralize(p.url)}">\n${p.text}\n</pagina>`).join('\n');
