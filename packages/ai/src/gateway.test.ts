@@ -268,6 +268,14 @@ describe('pasarela de LLM: búsqueda web (ruta discovery)', () => {
     expect(rows[0]).toMatchObject({ route: 'discovery', webSearches: 2 });
   });
 
+  it('el motor de búsqueda de la ruta (searchEngine) se pasa al proveedor; quien pide la ruta no lo elige', async () => {
+    const cfg = config();
+    cfg.routes.discovery = { ...cfg.routes.discovery, searchEngine: 'exa' };
+    const { provider, call } = fakeProvider('openrouter', { text: 'NINGUNA' }, withSearch());
+    await createGateway({ store: memoryStore(cfg).store, providers: { openrouter: provider }, clock: () => AT }).run('discovery', askSearch);
+    expect(call.mock.calls[0]![0].webSearch).toEqual({ maxResults: 5, maxUses: 2, excludedDomains: ['linkedin.com'], engine: 'exa' });
+  });
+
   it('si el proveedor no ofrece búsqueda web, la petición con búsqueda se niega y no se llama a nadie (no se degrada en silencio)', async () => {
     const { store, rows } = memoryStore(config());
     const { provider, call } = fakeProvider('openrouter', {}, ['structured_output', 'prompt_cache']);

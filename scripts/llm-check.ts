@@ -73,7 +73,7 @@ async function checkSearch(gateway: Gateway): Promise<boolean> {
   console.log(`Búsquedas hechas: ${r.webSearches ?? 0} · Citas: ${hosts.length}${hosts.length ? ` (${[...new Set(hosts)].slice(0, 6).join(', ')})` : ''}`);
   const good = r.status === 'ok' && hosts.length > 0 && (r.webSearches ?? 0) > 0;
   console.log(good ? 'RESULTADO: correcto. La búsqueda web funciona y devuelve fuentes.' : 'RESULTADO: FALLÓ. No enciendas la búsqueda de webs (DISCOVER_ENABLED) hasta resolverlo.');
-  if (good) console.log('Compara el coste con lo esperado: tokens + unos 0,005–0,007 € por búsqueda del motor. Si es mucho mayor, avísame.');
+  if (good) console.log('Compara el coste con lo esperado: tokens + unos 0,005–0,01 $ por búsqueda del motor. Si es mucho mayor, avísame.');
   if (!good) console.log('Pistas: el modelo/proveedor puede no admitir la herramienta de búsqueda, o la respuesta no trajo citas (anotaciones url_citation).');
   return good;
 }

@@ -68,7 +68,7 @@ async function callProvider(adapter: LlmProvider, rc: RouteConfig, model: string
     return await adapter.call({
       model, system: req.system, messages: req.messages, maxTokens: req.maxTokens ?? rc.maxTokens, zdr: rc.zdr,
       jsonSchema: req.schema ? { name: req.schema.name, schema: jsonSchemaOf(req.schema.zod) } : undefined,
-      webSearch: req.webSearch,
+      webSearch: req.webSearch && (rc.searchEngine ? { ...req.webSearch, engine: rc.searchEngine } : req.webSearch),
     });
   } catch {
     return null; // el mensaje de la excepción puede llevar datos del prompt: no se propaga

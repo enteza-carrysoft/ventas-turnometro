@@ -176,6 +176,12 @@ describe('adaptador openrouter: búsqueda web (herramienta de servidor, document
     expect(b.provider).toMatchObject({ require_parameters: true, data_collection: 'deny' });
   });
 
+  it('con motor indicado lo envía como parameters.engine (con «exa» OpenRouter devuelve citas url_citation y respeta max_uses)', async () => {
+    const { provider, srv } = await setup(() => ({ json: completion() }));
+    await provider.call(req({ webSearch: { maxResults: 3, maxUses: 1, engine: 'exa' } }));
+    expect((srv.requests[0]!.body.tools as Array<{ parameters: Record<string, unknown> }>)[0]!.parameters).toEqual({ engine: 'exa', max_results: 3, max_uses: 1 });
+  });
+
   it('sin dominios excluidos no envía la lista vacía', async () => {
     const { provider, srv } = await setup(() => ({ json: completion() }));
     await provider.call(req({ webSearch: { maxResults: 3, maxUses: 1 } }));

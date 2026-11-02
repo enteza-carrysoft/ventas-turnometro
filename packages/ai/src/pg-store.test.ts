@@ -50,6 +50,8 @@ describe('configuración sembrada por la migración 0006 (ADR-005, D-15, D-03)',
       expect(cfg.routes[r]).toMatchObject({ provider: 'openrouter', models: { openrouter: LUNA }, allowedModels: [LUNA] });
     }
     expect(cfg.routes['discovery'].requires).toEqual(['web_search']); // lo de la 0011 se conserva
+    expect(cfg.routes['discovery'].searchEngine).toBe('exa'); // 0016: con el motor nativo de OpenAI no llegan citas
+    expect(cfg.routes['enrich.extract'].searchEngine).toBeUndefined();
     expect(cfg.routes['content.generate'].models.openrouter).toBe(OPUS);
     expect(cfg.prices[LUNA]).toEqual({ input_per_mtok_usd: 0.1, output_per_mtok_usd: 0.5, cached_per_mtok_usd: 0.01 });
     expect(cfg.prices[OPUS]).toEqual({ input_per_mtok_usd: 4, output_per_mtok_usd: 20, cached_per_mtok_usd: 0.2 });

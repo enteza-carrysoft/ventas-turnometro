@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CAPABILITIES, PROVIDER_IDS, type Capability, type Citation, type ErrorReason, type ProviderId, type WebSearchOptions } from './providers/types.js';
+import { CAPABILITIES, PROVIDER_IDS, SEARCH_ENGINES, type Capability, type Citation, type ErrorReason, type ProviderId, type WebSearchOptions } from './providers/types.js';
 
 export const ROUTE_IDS = [
   'market.analyze', 'market.size', 'discovery', 'enrich.extract', 'content.generate', 'inbound.classify', 'voice.dialog', 'report.weekly',
@@ -20,6 +20,8 @@ export const routeConfigSchema = z.object({
   /** intención de esfuerzo; NO se envía al proveedor hasta verificarlo con el modelo real (F1.1, «Aprendizajes») */
   effort: z.enum(['low', 'medium', 'high']).optional(),
   zdr: z.boolean(),
+  /** motor de la búsqueda web; sin él, el que elija el proveedor */
+  searchEngine: z.enum(SEARCH_ENGINES).optional(),
 });
 export type RouteConfig = z.infer<typeof routeConfigSchema>;
 

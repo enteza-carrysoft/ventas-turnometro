@@ -88,7 +88,7 @@ function buildBody(req: ProviderRequest): Json {
     max_tokens: req.maxTokens,
     // Privacidad (constitución P5.6): nunca a proveedores que recojan datos; y los parámetros no soportados NO se ignoran.
     provider: { require_parameters: true, data_collection: 'deny', ...(req.zdr ? { zdr: true } : {}) },
-    ...(req.webSearch ? { tools: [{ type: 'openrouter:web_search', parameters: { max_results: req.webSearch.maxResults, max_uses: req.webSearch.maxUses, ...(req.webSearch.excludedDomains?.length ? { excluded_domains: req.webSearch.excludedDomains } : {}) } }] } : {}),
+    ...(req.webSearch ? { tools: [{ type: 'openrouter:web_search', parameters: { ...(req.webSearch.engine ? { engine: req.webSearch.engine } : {}), max_results: req.webSearch.maxResults, max_uses: req.webSearch.maxUses, ...(req.webSearch.excludedDomains?.length ? { excluded_domains: req.webSearch.excludedDomains } : {}) } }] } : {}),
     ...(req.jsonSchema ? { response_format: { type: 'json_schema', json_schema: { name: req.jsonSchema.name, strict: true, schema: req.jsonSchema.schema } } } : {}),
   };
 }

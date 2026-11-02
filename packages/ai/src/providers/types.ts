@@ -26,10 +26,16 @@ export interface ProviderRequest {
   webSearch?: WebSearchOptions | undefined;
 }
 
+/** Motores de la búsqueda de OpenRouter (documentación consultada el 02/11/2026). Con «native» y modelos de OpenAI no llegan citas. */
+export const SEARCH_ENGINES = ['auto', 'native', 'exa', 'firecrawl', 'parallel', 'perplexity'] as const;
+export type SearchEngine = (typeof SEARCH_ENGINES)[number];
+
 export interface WebSearchOptions {
   maxResults: number;
   maxUses: number;
   excludedDomains?: string[] | undefined;
+  /** lo pone la pasarela desde la ruta (`searchEngine`); quien pide la ruta no lo elige */
+  engine?: SearchEngine | undefined;
 }
 
 export interface Citation {
