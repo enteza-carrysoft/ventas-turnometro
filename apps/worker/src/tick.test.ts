@@ -241,7 +241,7 @@ describe('tick: peticiones del panel (market.analyze)', () => {
   it('atiende un análisis: si el modelo propone segmentos, la petición queda hecha con el resultado', async () => {
     await clean();
     await t.admin.query(`insert into product_facts (id, product_id, version, status, facts, approved_by, approved_at) values ('00000000-0000-7000-8000-0000000000c1',$1,1,'approved','{"plans":[]}','admin',now()) on conflict do nothing`, [P1]);
-    const analysis: MarketAnalysis = { segments: [{ name: 'Clínicas test', vertical: 'salud', description: 'd'.repeat(5), signals: ['varias_consultas'], decision_maker_role: 'Gerente', message: 'm'.repeat(5), best_demo: 'b'.repeat(5), fit_score: 80, fit_reasoning: 'razón suficientemente larga', source_urls: ['https://turnosala.com'], osm_filters: [['healthcare', 'dentist']] }] };
+    const analysis: MarketAnalysis = { segments: [{ name: 'Clínicas test', vertical: 'salud', description: 'd'.repeat(5), signals: ['varias_consultas'], decision_maker_role: 'Gerente', message: 'm'.repeat(5), best_demo: 'b'.repeat(5), fit_score: 80, fit_reasoning: 'razón suficientemente larga', source_urls: ['https://turnosala.com'], osm_filters: [{ key: 'healthcare', value: 'dentist' }] }] };
     const s = setup({ gateway: () => ok(analysis) as LlmResult<unknown>, crawl: (u) => CRAWL(u) });
     const id = await requestWork(t.app, 'market.analyze', { productId: P1 }, 'marketing@x.es');
     const stats = await tick(s.deps);

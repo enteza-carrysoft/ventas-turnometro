@@ -25,7 +25,7 @@ const page = (url: string, text: string) => ({ url, finalUrl: url, status: 200, 
 const CRAWL: CrawlResult = { robots: 'allowed', skipped: [], pages: [page(U1, 'Gestión de turnos para clínicas y ópticas'), page(U2, 'Clínicas dentales con varias consultas')] };
 const seg = (over: Record<string, unknown> = {}) => ({
   name: 'Clínicas dentales', vertical: 'salud', description: 'Clínicas con varias consultas', signals: ['varias_consultas'], decision_maker_role: 'Gerente', message: 'Menos esperas',
-  best_demo: 'Pantalla en sala', fit_score: 80, fit_reasoning: 'Varias consultas simultáneas con sala de espera.', source_urls: [U2], osm_filters: [['healthcare', 'dentist']], ...over,
+  best_demo: 'Pantalla en sala', fit_score: 80, fit_reasoning: 'Varias consultas simultáneas con sala de espera.', source_urls: [U2], osm_filters: [{ key: 'healthcare', value: 'dentist' }], ...over,
 });
 const ok = <T>(data: T): LlmResult<T> => ({ status: 'ok', data, provider: 'openrouter', requestedModel: 'm', servedModel: 'm', fallbackUsed: false, usage: { input: 1, output: 1, cachedInput: 0, costEur: 0.3, costSource: 'provider' } });
 const fail = (reason: string): LlmResult<MarketAnalysis> => ({ status: 'error', reason: reason as never, provider: null, requestedModel: null, servedModel: null, fallbackUsed: false, usage: { input: 0, output: 0, cachedInput: 0, costEur: 0, costSource: 'unknown' } });
