@@ -21,8 +21,8 @@ export {
 export { saveSegmentDrafts, approveSegment, editSegment, retireSegment, type Actor as SegmentActor, type SegmentPatch } from './segments.js';
 export { importTerritories, listTerritories, saveSizing, type TerritoryImportResult, type TerritoryRow, type SaveSizingInput } from './territories.js';
 export {
-  listQueue, getCard, exportApprovedCsv, reviewProspect, correctField, addContactPoint, MANUAL_CONTACT_TYPES, bulkApprove, REVIEWABLE,
-  type Card, type QueueItem, type Reviewer, type ReviewInput, type ReviewResult, type CorrectInput, type CorrectResult, type AddContactInput, type AddContactResult, type ManualContactType, type BulkResult,
+  listQueue, listApproved, getCard, exportApprovedCsv, reviewProspect, correctField, addContactPoint, MANUAL_CONTACT_TYPES, bulkApprove, REVIEWABLE,
+  type Card, type QueueItem, type ApprovedItem, type Reviewer, type ReviewInput, type ReviewResult, type CorrectInput, type CorrectResult, type AddContactInput, type AddContactResult, type ManualContactType, type BulkResult,
 } from './review.js';
 export {
   claimEnrichable, unclaimEnrichable, recordEnrichFailure, enrichBacklog, requestWork, claimRequest, finishRequest, failRequest, listRequests, MAX_ENRICH_ATTEMPTS,

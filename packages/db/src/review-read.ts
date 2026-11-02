@@ -28,6 +28,26 @@ export async function listQueue(pool: pg.Pool, o: { limit?: number } = {}): Prom
   }));
 }
 
+export interface ApprovedItem {
+  id: string; name: string; score: number | null; tier: string | null; legalForm: string; website: string | null; municipality: string | null;
+  segment: string | null; reviewedBy: string | null; reviewedAt: Date | null; contacts: Array<{ type: string; value: string }>;
+}
+
+/** Fichas aprobadas para consultarlas en el panel (solo lectura; usar sus canales sigue pasando por la puerta, P1). */
+export async function listApproved(pool: pg.Pool, o: { limit?: number } = {}): Promise<ApprovedItem[]> {
+  const r = await pool.query(
+    `select p.id, p.name, p.score, p.tier, p.legal_form, p.website, t.name as municipality, s.name as segment, p.reviewed_at,
+            coalesce(u.name, p.reviewed_by) as reviewed_by,
+            coalesce((select json_agg(json_build_object('type', c.type, 'value', c.value) order by c.type, c.value) from contact_points c where c.prospect_id = p.id), '[]') as contacts
+       from prospects p left join territories t on t.ine_code = p.ine_code left join segments s on s.id = p.segment_id left join "user" u on u.id = p.reviewed_by
+      where p.status = 'approved' order by p.score desc nulls last, p.reviewed_at desc, p.id limit $1`, [o.limit ?? 200]);
+  return (r.rows as Array<Record<string, unknown>>).map((x) => ({
+    id: x.id as string, name: x.name as string, score: x.score as number | null, tier: x.tier as string | null, legalForm: x.legal_form as string,
+    website: x.website as string | null, municipality: x.municipality as string | null, segment: x.segment as string | null,
+    reviewedBy: x.reviewed_by as string | null, reviewedAt: x.reviewed_at as Date | null, contacts: x.contacts as Array<{ type: string; value: string }>,
+  }));
+}
+
 export interface Card {
   prospect: {
     id: string; name: string; status: string; legalForm: string; website: string | null; domain: string | null; ineCode: string | null; municipality: string | null;

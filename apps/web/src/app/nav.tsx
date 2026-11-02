@@ -9,6 +9,7 @@ export function Nav() {
       <Link href="/" style={linkStyle}>Panel</Link>
       <Link href="/investigacion" style={linkStyle}>Investigación</Link>
       <Link href="/fichas" style={linkStyle}>Cola de revisión</Link>
+      <Link href="/fichas/aprobadas" style={linkStyle}>Fichas aprobadas</Link>
       <Link href="/oportunidades" style={linkStyle}>Oportunidades</Link>
       <Link href="/segmentos" style={linkStyle}>Segmentos</Link>
       <Link href="/ajustes/consentimientos" style={linkStyle}>Textos legales</Link>

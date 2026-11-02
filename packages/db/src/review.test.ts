@@ -1,6 +1,6 @@
 import { seededRng } from '@turnosala/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { addContactPoint, bulkApprove, correctField, exportApprovedCsv, getCard, listQueue, reviewProspect } from './review.js';
+import { addContactPoint, bulkApprove, correctField, exportApprovedCsv, getCard, listApproved, listQueue, reviewProspect } from './review.js';
 import { ingestCandidate } from './ingest.js';
 import { saveEnrichment } from './enrichment.js';
 import { createTestDb, type TestDb } from './testing.js';
@@ -47,6 +47,27 @@ async function prospect(over: { name?: string; legal?: string; status?: string; 
 const status = async (id: string): Promise<string> => ((await t.app.query('select status from prospects where id = $1', [id])).rows[0] as { status: string }).status;
 const audits = async (action: string, id: string) => (await t.app.query(`select actor, payload from audit_log where action = $1 and entity_id = $2`, [action, id])).rows as Array<{ actor: string; payload: Record<string, unknown> }>;
 const sideEffects = async (): Promise<number[]> => Promise.all(['contact_attempts', 'consents', 'compliance_decisions', 'suppressions'].map(async (tb) => Number(((await t.app.query(`select count(*) n from ${tb}`)).rows[0] as { n: string }).n)));
+
+describe('listApproved (REQ-REV-03): las fichas aprobadas se pueden consultar en pantalla', () => {
+  it('solo las aprobadas, de más a menos puntuación, con segmento, quién y cuándo se revisó y sus canales de contacto', async () => {
+    const seg = '00000000-0000-7000-8000-0000000000a1';
+    await t.admin.query(`insert into products (id, slug, name, website) values ('00000000-0000-7000-8000-0000000000a0','tsa','TS','https://t.es') on conflict do nothing`);
+    await t.admin.query(`insert into segments (id, product_id, slug, name, status, definition) values ($1,'00000000-0000-7000-8000-0000000000a0','pelu','Peluquerías','approved','{}') on conflict do nothing`, [seg]);
+    const hi = await prospect();
+    const lo = await prospect();
+    const pending = await prospect();
+    await t.admin.query('update prospects set score = 80, segment_id = $2 where id = $1', [hi, seg]);
+    await t.admin.query('update prospects set score = 20 where id = $1', [lo]);
+    for (const id of [hi, lo]) await reviewProspect(t.app, id, MKT, { action: 'approve' });
+    const list = await listApproved(t.app, { limit: 500 });
+    const ids = list.map((x) => x.id);
+    expect(ids).not.toContain(pending);
+    expect(ids.indexOf(hi)).toBeLessThan(ids.indexOf(lo));
+    expect(list.find((x) => x.id === hi)).toMatchObject({ score: 80, segment: 'Peluquerías', municipality: 'Sevilla', reviewedBy: 'u-mkt', reviewedAt: expect.any(Date) });
+    expect(list.find((x) => x.id === hi)!.contacts).toContainEqual({ type: 'switchboard_phone', value: '+34954123456' });
+    expect(list.find((x) => x.id === lo)).toMatchObject({ segment: null });
+  });
+});
 
 describe('listQueue / getCard (REQ-REV-01)', () => {
   it('la cola trae las fichas por revisar, de más a menos puntuación, con el nº de campos inferidos', async () => {

@@ -3,7 +3,7 @@ import type pg from 'pg';
 import { uuidv7 } from './uuid.js';
 import { REVIEWABLE } from './review-read.js';
 
-export { exportApprovedCsv, getCard, listQueue, REVIEWABLE, type Card, type QueueItem } from './review-read.js';
+export { exportApprovedCsv, getCard, listApproved, listQueue, REVIEWABLE, type ApprovedItem, type Card, type QueueItem } from './review-read.js';
 
 // Revisión humana (REQ-REV-02): aprobar, corregir un campo, descartar con motivo y bloquear. Aprobar NO contacta con nadie: solo habilita
 // la ficha para planificar acciones (CA1). Todo queda en `audit_log` con quién lo hizo.
