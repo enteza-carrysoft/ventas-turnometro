@@ -40,7 +40,7 @@ describe('withRetry (REQ-RES-03)', () => {
     const op = vi.fn().mockRejectedValueOnce(new SourceError('http_5xx', 'HTTP 503')).mockRejectedValueOnce(new SourceError('network', 'caído')).mockResolvedValue('ok');
     expect(await withRetry(op, { sleep: async (ms) => { sleeps.push(ms); } })).toBe('ok');
     expect(op).toHaveBeenCalledTimes(3);
-    expect(sleeps).toEqual([2000, 4000]);
+    expect(sleeps).toEqual([15_000, 30_000]); // 02/11/2026: con 2 s y 4 s un Overpass saturado (502 a ratos) tumbaba el trabajo
   });
 
   it('tras 3 fallos lanza el último error; 429/406 esperan 30 s', async () => {
@@ -123,7 +123,7 @@ describe('adaptador OSM / Overpass (REQ-RES-02)', () => {
     const f = vi.fn().mockResolvedValueOnce(json({}, 429)).mockResolvedValueOnce(json({}, 503)).mockResolvedValue(json(FIXTURE));
     const { a, sleeps } = adapter(f);
     expect((await a.fetch(req)).candidates.length).toBe(3);
-    expect(sleeps).toEqual([30_000, 4000]);
+    expect(sleeps).toEqual([30_000, 30_000]);
     const always = adapter(async () => json({}, 429));
     await expect(always.a.fetch(req)).rejects.toThrow(/429/);
   });

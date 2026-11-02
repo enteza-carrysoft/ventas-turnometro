@@ -10,7 +10,7 @@ export class SourceError extends Error {
 }
 
 export const MAX_ATTEMPTS = 3;
-const BASE_MS = 2000;
+const BASE_MS = 15_000; // un servidor público saturado (Overpass, 502 a ratos) necesita margen: 15 s y 30 s
 const RATE_LIMIT_MS = 30_000;
 
 export interface RetryOptions {
